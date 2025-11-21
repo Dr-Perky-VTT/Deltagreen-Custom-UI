@@ -1,0 +1,244 @@
+<!-- =================================================================== -->
+<!-- RECORDS DATABASE MAIN PANEL                                        -->
+<!-- =================================================================== -->
+<div class="dg-section">
+  <div class="dg-section-title">RECORDS DATABASE</div>
+
+ <div class="dg-form-group">
+    <input
+      type="text"
+      id="dg-search-input"
+      class="dg-form-input"
+      placeholder="ENTER SEARCH TERMS"
+    >
+  </div>
+  <button id="dg-search-button" class="dg-button">SEARCH</button>
+
+  <div id="dg-all-records" style="margin-top: 20px;">
+    <ul class="dg-results-list" id="dg-all-records-list">
+      <!-- Records list generated dynamically -->
+    </ul>
+  </div>
+</div>
+
+<div class="dg-records-actions"
+     style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+  <button id="dg-add-record-button" class="dg-button">ADD CONTACT</button>
+  <button id="dg-add-vehicle-btn" class="dg-button">ADD VEHICLE</button>
+  <button id="dg-add-unnatural-npc" class="dg-button">ADD UNNATURAL</button>
+</div>
+<!-- =================================================================== -->
+<!-- HUMAN / NPC / AGENT / UNNATURAL CASE STUDY FORM                     -->
+<!-- =================================================================== -->
+<div id="dg-case-study-form"
+     class="dg-npc-view"
+     style="display:none; position:fixed; z-index:20000;">
+
+  <div class="dg-section-title">
+    CASE STUDY <span id="dg-case-number"></span>
+  </div>
+
+  <!-- HEADER: avatar (+ optional stats) only -->
+  <div class="dg-profile-header">
+    <!-- Avatar -->
+    <div class="dg-profile-avatar-container">
+      <img id="dg-profile-avatar" src="icons/svg/mystery-man.svg" alt="Profile Image">
+      <button id="dg-change-avatar" class="dg-button dg-avatar-button" title="Change Image">
+        <i class="fas fa-camera"></i>
+      </button>
+    </div>
+
+    <!-- Agent stats & skills summary (only for agent-type actors; hidden in NPC view) -->
+    <div id="dg-case-agent-stats"
+         class="dg-agent-stats-panel"
+         style="display:none;">
+      <!-- Filled dynamically by RecordsManager._updateAgentStatsPanel -->
+    </div>
+  </div>
+
+  <!-- Invisible anchor used to restore layout after NPC compact view -->
+  <div id="dg-grid-home" style="display:none;"></div>
+
+  <!-- MAIN PROFILE GRID (shared by agents, NPCs, Unnatural, etc.) -->
+  <div class="dg-profile-grid">
+
+    <!-- FOLDER row (top) -->
+    <div class="dg-profile-row">
+      <div class="dg-profile-cell dg-profile-cell-wide">
+        <div class="dg-profile-label">Folder</div>
+        <select id="dg-record-folder" class="dg-form-select"></select>
+      </div>
+    </div>
+
+    <!-- Occupation / Names row -->
+    <div class="dg-profile-row dg-name-row">
+      <div class="dg-profile-cell dg-profile-cell-wide">
+        <div class="dg-profile-label" id="dg-label-reference">Occupation</div>
+        <input type="text" id="dg-reference" class="dg-form-input">
+      </div>
+
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label" id="dg-label-firstname">First Name</div>
+        <input type="text" id="dg-firstname" class="dg-form-input">
+      </div>
+
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label" id="dg-label-middlename">Last Name</div>
+        <input type="text" id="dg-middlename" class="dg-form-input">
+      </div>
+    </div>
+
+<!-- Distinguishing Features / Classification -->
+<div class="dg-profile-row">
+  <div class="dg-profile-cell dg-profile-cell-wide">
+    <div class="dg-profile-label" id="dg-label-features">
+      Distinguishing Features
+    </div>
+    <input type="text" id="dg-features" class="dg-form-input">
+  </div>
+</div>
+
+    <!-- Address / City-State / Relationship -->
+    <div class="dg-profile-row dg-location-row">
+      <div class="dg-profile-cell dg-profile-cell-wide">
+        <div class="dg-profile-label" id="dg-label-address">Address</div>
+        <input type="text" id="dg-address" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label" id="dg-label-zipcode">City, State</div>
+        <input type="text" id="dg-zipcode" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label" id="dg-label-relationship">Relationship Status</div>
+        <input type="text" id="dg-relationship" class="dg-form-input">
+      </div>
+    </div>
+
+    <!-- Demographics row (human-only) -->
+    <div class="dg-profile-row dg-human-only">
+      <div class="dg-profile-cell" style="flex:0.3;">
+        <div class="dg-profile-label">Sex</div>
+        <select id="dg-sex" class="dg-form-select" style="width: 70px;">
+          <option value="M">M</option>
+          <option value="F">F</option>
+          <option value="X">X</option>
+        </select>
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">Date of Birth</div>
+        <input type="text" id="dg-dob" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">Race</div>
+        <input type="text" id="dg-race" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">Height</div>
+        <input type="text" id="dg-height" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">Weight</div>
+        <input type="text" id="dg-weight" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">Hair Color</div>
+        <input type="text" id="dg-haircolor" class="dg-form-input">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">Eye Color</div>
+        <input type="text" id="dg-eyecolor" class="dg-form-input">
+      </div>
+    </div>
+
+  </div> <!-- end .dg-profile-grid -->
+
+  <!-- NOTES FULL WIDTH AT BOTTOM -->
+  <div class="dg-profile-notes dg-profile-notes-bottom">
+    <div class="dg-profile-label">Notes</div>
+    <textarea id="dg-notes" class="dg-form-textarea"></textarea>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- UNNATURAL NPC EXTRA SECTION PLACEHOLDER                             -->
+  <!-- =================================================================== -->
+  <div id="dg-unnatural-section"
+       class="dg-unnatural-section"
+       style="display:none; margin-top:10px;">
+    <!-- Intentionally left empty; JS will just show/hide this wrapper -->
+  </div>
+
+  <!-- ACTION BUTTONS (always visible for all types) -->
+  <div class="dg-profile-actions">
+    <button id="dg-save-record" class="dg-button">SAVE</button>
+    <button id="dg-cancel-record" class="dg-button">CANCEL</button>
+  </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- VEHICLE FORM                                                        -->
+<!-- =================================================================== -->
+<div id="dg-vehicle-form"
+     class="dg-record-window"
+     style="display:none; position:fixed; z-index:20000;">
+
+  <div class="dg-section-title">
+    VEHICLE RECORD
+  </div>
+
+  <div class="dg-profile-header">
+    <div class="dg-profile-avatar-container">
+      <img id="dg-vehicle-avatar" src="icons/svg/mystery-man.svg" alt="Vehicle Image">
+      <button id="dg-vehicle-change-avatar"
+              class="dg-button dg-avatar-button"
+              title="Change Image">
+        <i class="fas fa-camera"></i>
+      </button>
+    </div>
+
+    <div class="dg-profile-reference" style="flex:1; margin-left:10px;">
+      <div class="dg-profile-label">Folder</div>
+      <select id="dg-vehicle-folder" class="dg-form-select" style="width: 100%;"></select>
+    </div>
+  </div>
+
+  <div class="dg-profile-grid">
+    <div class="dg-profile-row">
+      <div class="dg-profile-cell dg-profile-cell-wide">
+        <div class="dg-profile-label">MAKE / MODEL</div>
+        <input type="text" class="dg-form-input" id="dg-vehicle-name">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">YEAR</div>
+        <input type="text" class="dg-form-input" id="dg-vehicle-year">
+      </div>
+    </div>
+
+    <div class="dg-profile-row">
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">COLOR</div>
+        <input type="text" class="dg-form-input" id="dg-vehicle-model">
+      </div>
+      <div class="dg-profile-cell">
+        <div class="dg-profile-label">PLATE / ID</div>
+        <input type="text" class="dg-form-input" id="dg-vehicle-plate">
+      </div>
+    </div>
+
+    <div class="dg-profile-row">
+      <div class="dg-profile-cell dg-profile-cell-wide">
+        <div class="dg-profile-label">OWNER</div>
+        <input type="text" class="dg-form-input" id="dg-vehicle-owner">
+      </div>
+    </div>
+  </div>
+
+  <div class="dg-profile-notes">
+    <div class="dg-profile-label">VEHICLE NOTES</div>
+    <textarea class="dg-form-textarea" id="dg-vehicle-notes"></textarea>
+  </div>
+
+  <div class="dg-profile-actions">
+    <button class="dg-button" id="dg-vehicle-save">SAVE</button>
+    <button class="dg-button" id="dg-vehicle-close">CLOSE</button>
+  </div>
+</div>

@@ -1,0 +1,50 @@
+<!-- JOURNAL VIEW ROOT (inside the dropdown panel) -->
+<div id="dg-journal-view-root">
+  <div class="dg-section" id="dg-journals">
+    <div class="dg-section-title">JOURNAL FILES</div>
+  <div class="dg-form-group">
+    <input
+      type="text"
+      id="dg-journal-search-input"
+      class="dg-form-input"
+      placeholder="ENTER SEARCH TERMS"
+    >
+  </div>
+  <button id="dg-journal-search-btn" class="dg-button" type="button"Style="margin-bottom:20px">
+    SEARCH
+  </button>
+
+  <!-- JOURNAL LIST -->
+<div class="dg-section">
+
+    <ul class="dg-results-list" id="dg-journals-list">
+      <li class="dg-result-item dg-no-entries">No journals found</li>
+    </ul>
+ </div>
+    <button id="dg-create-journal-btn" class="dg-button" type="button">
+      CREATE NEW
+    </button>
+ 
+</div>
+</div>
+
+<!-- JOURNAL POPUP WINDOW (FLOATS ABOVE THE BAR, LIKE RECORDS) -->
+<div id="dg-journal-window">
+  <!-- Header with title -->
+  <div id="dg-journal-window-header">
+    <span id="dg-journal-window-title">JOURNAL ENTRY</span>
+  </div>
+
+  <!-- Scrollable body -->
+  <div id="dg-journal-window-body">
+    <p class="dg-muted">
+      Select a journal from the list above to view its pages.
+    </p>
+  </div>
+
+  <!-- Buttons at the bottom, horizontal -->
+  <div class="dg-profile-actions">
+    <button id="dg-journal-edit" class="dg-button">EDIT</button>
+    <button id="dg-journal-close" class="dg-button">CLOSE</button>
+  </div>
+</div>

@@ -1,0 +1,104 @@
+<!-- =================================================================== -->
+<!-- BANKING / FUNDS VIEW                                               -->
+<!-- =================================================================== -->
+<div class="dg-section">
+  <div class="dg-section-title">AGENT ACCOUNT</div>
+
+  <div id="dg-bank-agent-name" style="margin-bottom: 6px;">
+    AGENT: NONE
+  </div>
+
+  <div id="dg-bank-balances" class="dg-bank-balances">
+    <div>CASH ON HAND: <span id="dg-bank-cash">$0</span></div>
+    <div>ACCOUNT BALANCE: <span id="dg-bank-account">$0</span></div>
+    <div>CREDIT LIMIT: <span id="dg-bank-credit">$0</span></div>
+	<div>ILLICIT: <span id="dg-bank-illicit">$0</span></div>
+</div>
+  </div>
+</div>
+
+<div class="dg-section">
+  <div class="dg-section-title">TRANSACTION LOG</div>
+  <ul id="dg-bank-log" class="dg-results-list"></ul>
+</div>
+
+<div class="dg-section" id="dg-bank-gm-panel">
+  <div class="dg-section-title">GM BANK CONTROLS</div>
+
+  <div class="dg-form-group">
+    <label for="dg-bank-gm-actor">TARGET AGENT</label>
+    <select id="dg-bank-gm-actor" class="dg-form-input"></select>
+  </div>
+
+  <div class="dg-form-group">
+    <label for="dg-bank-gm-field">CATEGORY</label>
+    <select id="dg-bank-gm-field" class="dg-form-input">
+      <option value="cash">Cash</option>
+      <option value="account">Account</option>
+      <option value="credit">Credit</option>
+	  <option value="illicit">ILLICIT CASH</option>
+
+    </select>
+  </div>
+
+  <div class="dg-form-group">
+    <label for="dg-bank-gm-amount">AMOUNT (+/-)</label>
+    <input
+      id="dg-bank-gm-amount"
+      type="number"
+      class="dg-form-input"
+      value="0"
+    >
+  </div>
+
+  <div class="dg-form-group">
+    <label for="dg-bank-gm-note">NOTE</label>
+    <input
+      id="dg-bank-gm-note"
+      type="text"
+      class="dg-form-input"
+      placeholder="PAYCHECK, GEAR PURCHASE, BRIBE, etc."
+    >
+  </div>
+
+  <!-- NEW: in-character date field -->
+  <div class="dg-form-group">
+    <label for="dg-bank-gm-date">IN-CHARACTER DATE</label>
+    <input
+      id="dg-bank-gm-date"
+      type="text"
+      class="dg-form-input"
+      placeholder="e.g. 19 FEB 1989"
+    >
+  </div>
+
+  <button
+    id="dg-bank-gm-apply"
+    class="dg-button"
+    type="button"
+    style="margin-top: 6px;"
+  >
+    APPLY TRANSACTION
+  </button>
+
+  <hr>
+
+  <div class="dg-form-group">
+    <label for="dg-bank-gm-quick-amount">
+      QUICK PAY (ALL PC RECORDS)
+    </label>
+    <input
+      id="dg-bank-gm-quick-amount"
+      type="number"
+      class="dg-form-input"
+      value="500"
+    >
+  </div>
+  <button
+    id="dg-bank-gm-quickpay"
+    class="dg-button"
+    type="button"
+  >
+    PAY ALL AGENTS
+  </button>
+</div>

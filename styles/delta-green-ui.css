@@ -1,0 +1,2690 @@
+/* ========================================================================== */
+/* FONT + THEME */
+/* ========================================================================== */
+/* ----------------------- CRT Terminal Fonts ----------------------- */
+@font-face {
+	font-family: "DG IBM VGA 9x16-2x";
+	src: url("asset/font/term/AcPlus_IBM_VGA_9x16-2x.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Rainbow100 re 66";
+	src: url("asset/font/term/AcPlus_Rainbow100_re_66.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Rainbow100 re 132";
+	src: url("asset/font/term/AcPlus_Rainbow100_re_132.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Tandy1K-II 200L";
+	src: url("asset/font/term/AcPlus_Tandy1K-II_200L.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Tandy1K-II 200L-2x";
+	src: url("asset/font/term/AcPlus_Tandy1K-II_200L-2x.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Tandy1K-II 200L-2y";
+	src: url("asset/font/term/AcPlus_Tandy1K-II_200L-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaSat 8x8";
+	src: url("asset/font/term/AcPlus_ToshibaSat_8x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaSat 8x14";
+	src: url("asset/font/term/AcPlus_ToshibaSat_8x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaSat 8x16";
+	src: url("asset/font/term/AcPlus_ToshibaSat_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaSat 9x8";
+	src: url("asset/font/term/AcPlus_ToshibaSat_9x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaSat 9x14";
+	src: url("asset/font/term/AcPlus_ToshibaSat_9x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaSat 9x16";
+	src: url("asset/font/term/AcPlus_ToshibaSat_9x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaTxL1 8x16";
+	src: url("asset/font/term/AcPlus_ToshibaTxL1_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ToshibaTxL2 8x16";
+	src: url("asset/font/term/AcPlus_ToshibaTxL2_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* ----- Ac437 Acer / ACM / AMI / etc. ----- */
+@font-face {
+	font-family: "DG Acer VGA 8x8";
+	src: url("asset/font/term/Ac437_Acer_VGA_8x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Acer VGA 8x8-2y";
+	src: url("asset/font/term/Ac437_Acer_VGA_8x8-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Acer VGA 9x8";
+	src: url("asset/font/term/Ac437_Acer_VGA_9x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Acer710 CGA";
+	src: url("asset/font/term/Ac437_Acer710_CGA.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Acer710 CGA-2y";
+	src: url("asset/font/term/Ac437_Acer710_CGA-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Acer710 Mono";
+	src: url("asset/font/term/Ac437_Acer710_Mono.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ACM VGA 8x8";
+	src: url("asset/font/term/Ac437_ACM_VGA_8x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ACM VGA 8x14";
+	src: url("asset/font/term/Ac437_ACM_VGA_8x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ACM VGA 8x16";
+	src: url("asset/font/term/Ac437_ACM_VGA_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ACM VGA 9x8";
+	src: url("asset/font/term/Ac437_ACM_VGA_9x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ACM VGA 9x14";
+	src: url("asset/font/term/Ac437_ACM_VGA_9x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ACM VGA 9x16";
+	src: url("asset/font/term/Ac437_ACM_VGA_9x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* AMI EGA */
+@font-face {
+	font-family: "DG AMI EGA 8x8";
+	src: url("asset/font/term/Ac437_AMI_EGA_8x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG AMI EGA 8x8-2y";
+	src: url("asset/font/term/Ac437_AMI_EGA_8x8-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG AMI EGA 8x14";
+	src: url("asset/font/term/Ac437_AMI_EGA_8x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG AMI EGA 9x14";
+	src: url("asset/font/term/Ac437_AMI_EGA_9x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* Amstrad / Apricot */
+@font-face {
+	font-family: "DG Amstrad PC";
+	src: url("asset/font/term/Ac437_Amstrad_PC.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Amstrad PC-2y";
+	src: url("asset/font/term/Ac437_Amstrad_PC-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Apricot 200L";
+	src: url("asset/font/term/Ac437_Apricot_200L.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Apricot 200L-2y";
+	src: url("asset/font/term/Ac437_Apricot_200L-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Apricot Mono";
+	src: url("asset/font/term/Ac437_Apricot_Mono.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ApricotPortable";
+	src: url("asset/font/term/Ac437_ApricotPortable.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ApricotXenC";
+	src: url("asset/font/term/Ac437_ApricotXenC.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* ATI */
+@font-face {
+	font-family: "DG ATI 8x8";
+	src: url("asset/font/term/Ac437_ATI_8x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI 8x8-2y";
+	src: url("asset/font/term/Ac437_ATI_8x8-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI 8x14";
+	src: url("asset/font/term/Ac437_ATI_8x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI 8x16";
+	src: url("asset/font/term/Ac437_ATI_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI 9x8";
+	src: url("asset/font/term/Ac437_ATI_9x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI 9x14";
+	src: url("asset/font/term/Ac437_ATI_9x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI 9x16";
+	src: url("asset/font/term/Ac437_ATI_9x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATI SmallW 6x8";
+	src: url("asset/font/term/Ac437_ATI_SmallW_6x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* ATT / CL Eagle */
+@font-face {
+	font-family: "DG ATT PC6300";
+	src: url("asset/font/term/Ac437_ATT_PC6300.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG ATT PC6300-2x";
+	src: url("asset/font/term/Ac437_ATT_PC6300-2x.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG CL EagleII 8x16";
+	src: url("asset/font/term/Ac437_CL_EagleII_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG CL EagleII 9x16";
+	src: url("asset/font/term/Ac437_CL_EagleII_9x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG CL EagleIII 8x16";
+	src: url("asset/font/term/Ac437_CL_EagleIII_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG CL EagleIII 9x16";
+	src: url("asset/font/term/Ac437_CL_EagleIII_9x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* CompaqThin */
+@font-face {
+	font-family: "DG CompaqThin 8x8";
+	src: url("asset/font/term/Ac437_CompaqThin_8x8.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG CompaqThin 8x14";
+	src: url("asset/font/term/Ac437_CompaqThin_8x14.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG CompaqThin 8x16";
+	src: url("asset/font/term/Ac437_CompaqThin_8x16.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* Compis / Copam / Cordata */
+@font-face {
+	font-family: "DG Compis";
+	src: url("asset/font/term/Ac437_Compis.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Copam BIOS";
+	src: url("asset/font/term/Ac437_Copam_BIOS.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Copam BIOS-2y";
+	src: url("asset/font/term/Ac437_Copam_BIOS-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Cordata PPC-21";
+	src: url("asset/font/term/Ac437_Cordata_PPC-21.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG Cordata PPC-400";
+	src: url("asset/font/term/Ac437_Cordata_PPC-400.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* DG One / DTK / EagleSpCGA */
+@font-face {
+	font-family: "DG DG One";
+	src: url("asset/font/term/Ac437_DG_One.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG DG One bold";
+	src: url("asset/font/term/Ac437_DG_One_bold.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG DG One-2y";
+	src: url("asset/font/term/Ac437_DG_One-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG DG One-2y bold";
+	src: url("asset/font/term/Ac437_DG_One-2y_bold.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG DTK BIOS";
+	src: url("asset/font/term/Ac437_DTK_BIOS.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+@font-face {
+	font-family: "DG DTK BIOS-2y";
+	src: url("asset/font/term/Ac437_DTK_BIOS-2y.ttf") format("truetype");
+	font-weight: normal;
+	font-style: normal;
+}
+/* (…and so on for the rest of the list…) */
+/* Global theme variables (driven by ColorThemeManager) */
+:root {
+	/* Primary theme colors (these are what the JS overrides) */
+	--dg-color-bg: #1a1a1a;
+	--dg-color-primary: #44ff77;
+	--dg-color-secondary: #2f6a3f;
+	--dg-color-accent: #44ff77;
+	--dg-color-danger: #ff3333;
+	--dg-color-border: var(--dg-color-accent);
+	--dg-color-text: var(--dg-color-primary);
+	--dg-color-text-dim: var(--dg-color-secondary);
+	/* Legacy CRT aliases so existing CSS keeps working */
+	--crt-primary: var(--dg-color-primary);
+	--crt-dark-primary: var(--dg-color-secondary);
+	--crt-bg: var(--dg-color-bg);
+	--crt-border: var(--dg-color-border);
+	--crt-text: var(--dg-color-text);
+	--crt-highlight: var(--dg-color-accent);
+	--crt-shadow: rgba(0, 0, 0, 0.5);
+	/* Compass scale */
+	--dg-compass-scale: 2.8;
+	/* NEW: default scanline intensity (0–1), controlled by settings */
+	--dg-scanline-opacity: 0.4;
+}
+/* Base CRT font for the whole page when DG CRT is “on” */
+body.dg-crt-on {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+}
+/* Use the current CRT font (or Ac437 as fallback) in DG UI + popups */
+#dg-crt-container,#dg-crt-container *,#dg-journal-window,#dg-journal-window *,#dg-case-study-form,#dg-case-study-form *,#dg-vehicle-form,#dg-vehicle-form *,.dg-record-window,.dg-record-window * {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace !important;
+}
+/* ========================================================================== */
+/* CORE CRT LAYOUT – DOCKED TOP BAR + DROPDOWN */
+/* ========================================================================== */
+#dg-crt-container {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: auto;
+	width: 100%;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	display: block;
+	pointer-events: none;
+	/* CRT does not block clicks by default */
+	background: rgba(0, 0, 0, 0.35);
+	overflow: visible;
+}
+/* Main CRT shell – transparent HUD look */
+#dg-crt-screen {
+	position: relative;
+	pointer-events: auto;
+	/* Only the bar + dropdown get clicks */
+	width: 100%;
+	max-width: 100%;
+	height: auto;
+	min-height: 0;
+	margin: 0;
+	/* flush full-width, no centering gap */
+	background: rgba(0, 0, 0, 0.35);
+	box-shadow: none;
+	border-bottom: 1px solid var(--crt-text);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+/* ========================================================================== */
+/* HEADER / PROGRAM BAR / NOW PLAYING */
+/* ========================================================================== */
+#dg-crt-title {
+	font-size: 1rem;
+	padding: 2px 10px;
+	color: var(--crt-text);
+	text-shadow: 0 0 5px var(--crt-shadow);
+}
+#dg-crt-status {
+	font-size: 1.4em;
+	color: var(--crt-text);
+	margin-left: 10%;
+}
+#dg-crt-menu {
+	background-color: #00000030;
+	border-top: 1px solid var(--crt-text);
+	border-bottom: 1px solid var(--crt-text);
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 30px;
+	padding: 2px 12px;
+}
+.dg-menu-item {
+	margin-right: 12px;
+	color: var(--crt-text);
+	cursor: pointer;
+	font-size: 1.5rem;
+	white-space: nowrap;
+	text-shadow: 0 0 5px var(--crt-shadow);
+}
+.dg-menu-item:last-child {
+	margin-right: 0;
+}
+.dg-menu-item:hover,.dg-menu-item.active {
+	color: var(--crt-highlight);
+}
+#dg-now-playing {
+	font-size: 0.7em;
+	padding: 4px 8px;
+	background: rgba(0, 0, 0, 0.35);
+	border-top: 1px solid var(--crt-text);
+	border-bottom: 1px solid var(--crt-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+/* ========================================================================== */
+/* DROPDOWN PANEL & VIEWS */
+/* ========================================================================== */
+#dg-crt-content {
+	display: none;
+	position: relative;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 16px;
+	background: rgba(0, 0, 0, 0.35);
+	border-bottom: 1px solid var(--crt-text);
+	max-height: calc(100vh - 60px);
+	overflow-y: auto;
+}
+#dg-crt-content.dg-open {
+	display: block;
+}
+.dg-view {
+	display: none;
+}
+.dg-view.active {
+	display: block;
+	max-height: none;
+	overflow: visible;
+}
+#dg-main-panel,#dg-side-panel {
+	width: 100%;
+	height: 100%;
+	margin: 0 auto;
+}
+/* ========================================================================== */
+/* SECTIONS & LISTS */
+/* ========================================================================== */
+.dg-section {
+	margin-bottom: 20px;
+	border: 1px solid var(--crt-text);
+	padding: 10px;
+	width: 100%;
+	max-width: 100%;
+}
+.dg-section-title {
+	position: relative;
+	padding: 5px 10px;
+	background-color: var(--crt-text);
+	color: var(--crt-bg);
+	margin: -10px -10px 10px -10px;
+	font-size: 1.5vh;
+	padding-right: 220px;
+	/* reserve space so the title text doesn't collide */
+}
+/* Any "LOGGED IN" name span in a header hugs the right side */
+.dg-section-title .dg-mail-actor-name {
+	position: absolute;
+	right: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 1em;
+	text-align: right;
+	white-space: nowrap;
+}
+#dg-mail-root .dg-section-title {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
+}
+#dg-mail-root .dg-section-title-right {
+	position: absolute;
+	right: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 1em;
+	text-align: right;
+	white-space: nowrap;
+	/* keeps LOGGED IN: NAME on one line */
+}
+.dg-no-entries,.dg-placeholder {
+	font-style: italic;
+	color: var(--dg-dark-primary);
+}
+.dg-placeholder {
+	opacity: 1;
+	cursor: default;
+}
+.dg-placeholder:hover {
+	background-color: transparent;
+}
+#dg-last-entries-list {
+	max-height: 156px;
+	margin: 10px;
+	padding: 10px;
+}
+#dg-last-journals-list {
+	max-height: 156px;
+	margin: 10px;
+	padding: 10px;
+}
+/* ========================================================================== */
+/* FORMS */
+/* ========================================================================== */
+.dg-form-group {
+	margin-bottom: 10px;
+}
+.dg-form-label {
+	display: block;
+	margin-bottom: 5px;
+	font-size: 1em;
+}
+.dg-form-input,.dg-form-select,.dg-form-textarea {
+	width: 100%;
+	background-color: #111;
+	border: 1px solid var(--crt-text);
+	color: var(--crt-text);
+	padding: 5px;
+	font-size: 1em;
+}
+.dg-form-input::placeholder {
+	color: #555;
+}
+.dg-form-input,.dg-form-select,.dg-form-textarea,.dg-form-input:focus,.dg-form-select:focus,.dg-form-textarea:focus,.dg-form-input:active,.dg-form-select:active,.dg-form-textarea:active {
+	color: var(--crt-text) !important;
+}
+.dg-form-input:focus,.dg-form-select:focus,.dg-form-textarea:focus,.dg-form-input:active,.dg-form-select:active,.dg-form-textarea:active {
+	background-color: #000;
+}
+.dg-form-select option {
+	background-color: #000;
+	color: var(--crt-text);
+}
+.dg-form-textarea {
+	min-height: 100px;
+	resize: vertical;
+}
+/* Short mail text area */
+.dg-mail-textarea {
+	min-height: 28px;
+	max-height: 28px;
+}
+.dg-mail-compose .dg-form-textarea:not(.dg-mail-textarea) {
+	min-height: 150px;
+}
+/* ========================================================================== */
+/* BUTTONS */
+/* ========================================================================== */
+.dg-button {
+	background: #000;
+	color: var(--crt-text);
+	border: 1px solid var(--crt-text);
+	padding: 5px 10px;
+	margin: 5px 0;
+	cursor: pointer;
+	font-size: 1em;
+}
+.dg-button:hover {
+	background: var(--crt-highlight);
+	/* accent */
+	color: var(--crt-bg);
+	/* same background var */
+	border: 1px solid var(--crt-highlight);
+	/* <<< this fixes the green border */
+}
+/* Make ONLY the APPLY MARKED SKILLS button smaller/bigger */
+#dg-apply-skill-improvements {
+	background: #000;
+	color: var(--crt-text);
+	border: 1px solid var(--crt-text);
+	cursor: pointer;
+  font-size: .8em;     /* try 11–12px for small, 14–16px for big */
+  padding: 2px 6px;    /* optional: tweak padding so it still looks neat */
+}
+#dg-apply-skill-improvements:hover {
+	background: var(--crt-highlight);
+	/* accent */
+	color: var(--crt-bg);
+	/* same background var */
+	border: 1px solid var(--crt-highlight);
+	/* <<< this fixes the green border */
+}
+/* ========================================================================== */
+/* HOTBARS – SKILLS / STATS / WEAPONS / MODIFIERS */
+/* ========================================================================== */
+.dg-mail-skillbar,.dg-mail-statbar,.dg-mail-weaponbar,.dg-mail-modbar {
+	display: flex;
+	font-size: 1em;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: center;
+	gap: 6px;
+	margin: 6px 0;
+	padding: 0;
+}
+#dg-skillbar {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+}
+.dg-mail-skillbar .dg-button,.dg-mail-statbar .dg-button,.dg-mail-weaponbar .dg-button,.dg-rolls-weaponbar .dg-button,#dg-weapon-hotbar .dg-button,.dg-typed-skill-btn {
+	flex: 0 0 auto;
+	width: auto;
+	white-space: nowrap;
+	padding: 4px 8px;
+	line-height: 1.1;
+	font-size: 1.1em;
+	text-align: center;
+}
+.dg-mod-label {
+	font-size: 0.6em;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	opacity: 0.75;
+}
+.dg-mod-btn.dg-button {
+	font-size: 0.75em;
+	min-width: 42px;
+}
+.dg-mod-btn.dg-button.dg-mod-active {
+	background: var(--crt-text);
+	color: var(--crt-bg);
+	border-color: var(--crt-text);
+}
+.dg-mod-btn.dg-button:not(.dg-mod-active):hover {
+	background: var(--crt-text);
+}
+.dg-mail-subtitle {
+	font-size: 0.6vh;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin: 6px 0 2px;
+	opacity: 0.8;
+	text-align: center;
+}
+.dg-mail-divider {
+	height: 8px;
+	border-bottom: 1px solid var(--dg-dark-primary);
+	margin: 8px 0;
+}
+#dg-weapon-hotbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	flex: 0 0 auto;
+	margin-top: 0;
+	padding-top: 0;
+}
+/* ========================================================================== */
+/* MAIL VIEW LAYOUT */
+/* ========================================================================== */
+#dg-view-mail #dg-mail-layout {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+#dg-mail-main {
+	flex: 0 0 50%;
+	max-width: 50%;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+#dg-mail-sidebar {
+	flex: 1 1 50%;
+	max-width: 50%;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+#dg-messages-container {
+	max-height: 50vh;
+	min-height: 30vh;
+	overflow-y: auto;
+	margin-bottom: 10px;
+	border: 1px solid var(--crt-text);
+	padding: 10px;
+	width: 100%;
+}
+.dg-message {
+	margin-bottom: 10px;
+	padding: 5px;
+	border-bottom: 1px solid var(--crt-dark-primary);
+}
+.dg-message-sender {
+	font-size: 1em;
+	font-weight: bold;
+	margin-bottom: 2px;
+	display: block;
+	text-align: center-right;
+	width: 100%;
+}
+.dg-message-content {
+	font-size: 1.5em;
+}
+.dg-mail-compose {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.dg-send-button {
+	width: 100%;
+	margin-top: auto;
+}
+#dg-mail-sidebar .dg-mail-subtitle {
+	margin-top: 4px;
+	margin-bottom: 2px;
+	font-size: 0.6em;
+	text-align: center;
+}
+#dg-mail-sidebar .dg-mail-skillbar,#dg-mail-sidebar .dg-mail-statbar,#dg-mail-sidebar .dg-mail-weaponbar,#dg-mail-sidebar .dg-mail-modbar {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 4px;
+	min-height: 28px;
+}
+#dg-mail-sidebar .dg-button,#dg-weapon-hotbar .dg-button {
+	flex: 0 0 auto;
+	width: auto;
+	white-space: nowrap;
+	padding: 3px 6px;
+	line-height: 1.1;
+	text-align: center;
+}
+/* ========================================================================== */
+/* LOGIN BUTTON */
+/* ========================================================================== */
+#dg-login-button {
+	position: fixed;
+	top: 60px;
+	left: 100px;
+	z-index: 45;
+	background: var(--crt-text);
+	color: var(--crt-bg);
+	border: none;
+	padding: 3px 6px;
+	cursor: pointer;
+	font-size: 1em;
+	width: auto;
+	height: auto;
+	line-height: 1;
+}
+/* ========================================================================== */
+/* AGENT INFO / PLAYER LIST / WARNINGS */
+/* ========================================================================== */
+.dg-agent-info {
+	display: flex;
+	align-items: center;
+	margin-bottom: 10px;
+	padding: 5px;
+	border: 1px solid var(--crt-text);
+}
+.dg-agent-label {
+	font-weight: bold;
+	margin-right: 10px;
+}
+.dg-agent-name {
+	color: var(--crt-highlight);
+}
+.dg-agent-stats-block {
+	font-size: 1em;
+	line-height: 1.4;
+}
+.dg-agent-stats-line {
+	margin-bottom: 4px;
+}
+#dg-case-agent-stats {
+	margin-left: 10px;
+	flex: 1 1 auto;
+}
+#dg-case-agent-stats .dg-agent-stats-block {
+	font-size: 1.4em;
+}
+.dg-agent-notes {
+	white-space: pre-wrap;
+}
+.dg-player-info {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+.dg-player-name {
+	font-weight: bold;
+	color: var(--crt-highlight);
+}
+.dg-character-name {
+	font-size: 1.4em;
+	color: var(--crt-text);
+}
+.dg-access-denied {
+	color: var(--dg-color-danger);
+	text-align: center;
+	padding: 20px;
+	border: 1px solid var(--dg-color-danger);
+	margin: 20px 0;
+	font-weight: bold;
+}
+#dg-records-warning,#dg-journal-warning {
+	color: var(--crt-text);
+	border: 1px solid var(--crt-text);
+	padding: 10px;
+	margin-bottom: 20px;
+	font-size: 0.6em;
+	text-align: center;
+}
+/* ========================================================================== */
+/* RECORD WINDOWS / VEHICLE FORMS */
+/* ========================================================================== */
+#dg-case-study-form,#dg-vehicle-form,.dg-record-window {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 80%;
+	max-width: 1000px;
+	background: rgba(0, 0, 0, 0.6);
+	border: 2px solid var(--crt-text);
+	padding: 12px;
+	z-index: 50;
+	box-sizing: border-box;
+	max-height: 90vh;
+	overflow-y: auto;
+}
+#dg-view-records {
+	position: relative;
+}
+.dg-profile-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 20px;
+	border-bottom: 1px solid var(--crt-text);
+	padding-bottom: 10px;
+}
+.dg-profile-avatar-container {
+	position: relative;
+	width: 256px;
+	height: 256px;
+	margin-right: 20px;
+	border: 1px solid var(--crt-text);
+	overflow: hidden;
+	flex: 0 0 256px;
+}
+#dg-profile-avatar,#dg-vehicle-avatar {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	background: #111;
+}
+.dg-profile-avatar-container img {
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover;
+	display: block;
+}
+.dg-avatar-button {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	width: 32px;
+	height: 32px;
+	padding: 3px;
+	font-size: 1em;
+	background: #000;
+	border: 1px solid var(--crt-text);
+	color: var(--crt-text);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.dg-avatar-button:hover {
+	background: var(--crt-text);
+	color: var(--crt-bg);
+}
+.dg-profile-title {
+	font-size: 1.5em;
+	color: var(--crt-text);
+	text-transform: uppercase;
+}
+.dg-profile-reference .dg-profile-label {
+	font-size: 1.4em;
+	margin-bottom: 1px;
+}
+.dg-profile-reference .dg-form-input {
+	font-size: 0.9em;
+	height: 28px;
+}
+.dg-profile-grid {
+	display: block;
+	margin-bottom: 20px;
+}
+.dg-profile-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 10px;
+}
+.dg-profile-cell {
+	flex: 1;
+	border: 1px solid var(--crt-text);
+	padding: 5px;
+}
+.dg-profile-cell-wide {
+	flex: 2;
+}
+.dg-profile-label {
+	font-size: 0.6em;
+	margin-bottom: 5px;
+	color: var(--crt-text);
+	text-transform: uppercase;
+}
+.dg-profile-header-right {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	gap: 10px;
+}
+.dg-profile-notes {
+	border: 1px solid var(--crt-text);
+	padding: 5px;
+	margin-bottom: 1px;
+	flex: 1 1 auto;
+	min-width: 0;
+	position: relative;
+}
+.dg-profile-notes .dg-form-textarea {
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	max-height: 150px;
+}
+.dg-agent-stats-panel {
+	border: 1px solid var(--crt-border);
+	padding: 4px 6px;
+	font-size: 0.8em;
+}
+.dg-profile-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+.dg-tabs {
+	display: flex;
+	border-bottom: 1px solid var(--crt-text);
+	margin-bottom: 20px;
+}
+.dg-tab {
+	padding: 5px 15px;
+	cursor: pointer;
+	color: var(--crt-text);
+	border: 1px solid var(--crt-text);
+	border-bottom: none;
+	margin-right: 5px;
+	font-size: 1.4em;
+}
+.dg-tab.active {
+	background-color: var(--crt-text);
+	color: var(--crt-bg);
+}
+.dg-tab-content {
+	display: none;
+}
+.dg-tab-content.active {
+	display: block;
+}
+#dg-all-records {
+	max-height: 60vh;
+	min-height: 30vh;
+	overflow-y: auto;
+	margin-top: 20px;
+	border: 1px solid var(--crt-text);
+	padding: 10px;
+}
+#dg-all-records-list {
+	max-height: 100%;
+	overflow-y: auto;
+}
+/* ========================================================================== */
+/* NPC / UNNATURAL RECORD VIEW OVERRIDES */
+/* ========================================================================== */
+#dg-case-study-form.dg-npc-view .dg-profile-header {
+	display: block;
+	border-bottom: none;
+	padding-bottom: 0;
+	margin-bottom: 10px;
+}
+#dg-case-study-form.dg-npc-view .dg-profile-avatar-container {
+	float: right;
+	width: 256px;
+	height: 256px;
+	margin: 0 0 10px 10px;
+	padding: 5px;
+}
+#dg-case-study-form.dg-npc-view #dg-case-agent-stats {
+	display: none !important;
+}
+#dg-case-study-form.dg-npc-view .dg-profile-row.dg-human-only {
+	clear: both;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+#dg-case-study-form.dg-npc-view .dg-profile-row.dg-human-only .dg-profile-cell {
+	flex: 1 1 120px;
+}
+#dg-case-study-form.dg-npc-view .dg-profile-notes-bottom {
+	clear: both;
+	margin-top: 10px;
+}
+#dg-case-study-form.dg-npc-view .dg-profile-notes-bottom .dg-form-textarea {
+	width: 100%;
+	box-sizing: border-box;
+	min-height: 150px;
+	resize: vertical;
+}
+#dg-case-study-form.dg-unnatural-view {
+	box-shadow: 0 0 18px rgba(255, 255, 255, 0.2);
+}
+#dg-case-study-form.dg-unnatural-view .dg-profile-title {
+	text-shadow: 0 0 10px var(--crt-shadow);
+}
+#dg-unnatural-section {
+	margin-top: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+#dg-unnatural-section .dg-profile-label {
+	font-size: 1em;
+	text-transform: uppercase;
+}
+#dg-unnatural-section .dg-profile-notes .dg-form-textarea {
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	max-height: 150px;
+}
+/* ========================================================================== */
+/* JOURNAL POPUP WINDOW */
+/* ========================================================================== */
+#dg-journal-window {
+	position: fixed;
+	top: 70px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: min(900px, 90vw);
+	background: rgba(0, 0, 0, 0.6);
+	border: 1px solid var(--crt-text);
+	box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+	z-index: 1005;
+	display: none;
+	overflow: hidden;
+	font-size: 0.8em;
+}
+#dg-journal-window-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 6px 10px;
+	border-bottom: 1px solid var(--crt-text);
+	background: rgba(0, 0, 0, 0.9);
+}
+#dg-journal-window-title {
+	text-transform: uppercase;
+}
+#dg-journal-close {
+	background: #000;
+	color: var(--crt-text);
+	border: 1px solid var(--crt-text);
+	padding: 3px 8px;
+	cursor: pointer;
+	font-size: 1em;
+}
+#dg-journal-window-body {
+	padding: 10px;
+	overflow-y: auto;
+	max-height: calc(80vh - 70px);
+}
+.dg-journal-body img,.dg-journal-image-wrapper img,#dg-journal-window-body img,.dg-journal-main-thumb,.dg-journal-thumb {
+	width: 512px;
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: 8px auto;
+	object-fit: contain;
+}
+/* ========================================================================== */
+/* HP/WP & SAN STATUS BOXES */
+/* ========================================================================== */
+.dg-mail-hpwpbar {
+	display: flex;
+	gap: 6px;
+	padding: 4px 8px 0;
+	flex-wrap: wrap;
+}
+.dg-hpwp-box {
+	display: inline-block;
+	min-width: 120px;
+	text-align: center;
+	padding: 4px 8px;
+	font-size: 0.7rem;
+	border: 1px solid var(--crt-text, #0f0);
+	background: transparent;
+	color: var(--crt-text, #0f0);
+}
+.dg-hpwp-good,.dg-san-safe {
+	background-color: rgba(0, 255, 0, 0.15);
+	border-color: #0f0;
+	color: #0f0;
+}
+.dg-hpwp-warn,.dg-san-warn {
+	background-color: rgba(255, 255, 0, 0.15);
+	border-color: #ff0;
+	color: #ff0;
+}
+.dg-hpwp-bad,.dg-san-bad {
+	background-color: rgba(255, 0, 0, 0.15);
+	border-color: #f33;
+	color: #f33;
+}
+/* ========================================================================== */
+/* DIALOG / WINDOW THEMING (GLOBAL) */
+/* ========================================================================== */
+.app.window-app.dialog {
+	background-color: var(--crt-bg) !important;
+	border: 2px solid var(--crt-text) !important;
+	color: var(--crt-text) !important;
+	font-family: var(--dg-crt-font-family, "DG One"), monospace !important;
+}
+.app.window-app.dialog .window-header {
+	background: var(--crt-bg) !important;
+	border-bottom: 1px solid var(--crt-text) !important;
+	color: var(--crt-text) !important;
+}
+.app.window-app.dialog .window-title {
+	color: var(--crt-text) !important;
+	text-transform: uppercase;
+	font-size: 0.9em;
+}
+.app.window-app.dialog .dialog-content {
+	background-color: var(--crt-bg) !important;
+	color: var(--crt-text) !important;
+}
+.app.window-app.dialog .dialog-buttons {
+	background-color: var(--crt-bg) !important;
+	border-top: 1px solid var(--crt-text) !important;
+}
+.app.window-app.dialog .dialog-buttons button {
+	background-color: var(--crt-text) !important;
+	color: var(--crt-bg) !important;
+	border: 1px solid var(--crt-text) !important;
+	font-family: var(--dg-crt-font-family, "DG One"), monospace !important;
+	font-size: 0.75em;
+	padding: 3px 8px;
+	cursor: pointer;
+}
+.app.window-app.dialog .dialog-buttons button:hover {
+	background-color: var(--crt-highlight) !important;
+}
+/* ========================================================================== */
+/* CUSTOM ROLL RESULT LOOK */
+/* ========================================================================== */
+.dg-roll-result {
+	border: 2px solid var(--dg-crt-primary);
+	background: linear-gradient(to bottom, #333, #111);
+	padding: 8px 12px;
+	margin: 6px 0;
+	border-radius: 3px;
+	text-align: center;
+	box-shadow: 0 0 10px var(--crt-shadow);
+}
+.dg-roll-result:hover {
+	box-shadow: 0 0 15px var(--crt-shadow);
+}
+.dg-roll-skill {
+	font-size: 25px;
+	text-align: center;
+	margin-bottom: 4px;
+	color: var(--crt-text);
+	text-transform: uppercase;
+	display: block;
+}
+.dg-roll-target {
+	font-size: 15px;
+	margin-bottom: 4px;
+	color: var(--crt-text);
+}
+.dg-roll-marked {
+	margin-top: 15px;
+	font-size: 1em;
+}
+.dg-roll-value {
+	font-size: 25px;
+	text-align: center;
+	text-shadow: 0 0 8px var(--crt-shadow);
+	font-weight: bold;
+	letter-spacing: 2px;
+	color: #ffffff;
+}
+.dg-roll-value.dg-roll-success {
+	color: #ffffff;
+}
+.dg-roll-value.dg-roll-failure {
+	color: #ff3333;
+}
+.dg-roll-value.dg-roll-crit-failure {
+	color: #ff6666;
+}
+.dg-roll-value.dg-roll-crit-success {
+	color: #00ff00;
+}
+/* ========================================================================== */
+/* RESPONSIVE */
+/* ========================================================================== */
+@media (max-width: 768px) {
+	#dg-crt-content {
+		flex-direction: column;
+		padding: 10px 20px;
+	}
+	#dg-main-panel,#dg-side-panel {
+		width: 100%;
+	}
+	#dg-login-logo-container {
+		width: 150px;
+		height: 150px;
+	}
+	#dg-login-messages {
+		width: 90%;
+	}
+	.dg-login-message {
+		font-size: 1em;
+	}
+	.dg-roll-value {
+		font-size: 25px;
+	}
+	#dg-web-container {
+		height: 500px;
+	}
+}
+/* ========================================================================== */
+/* PSYCHE REPORT + SECTION TITLE NAMES */
+/* ========================================================================== */
+/* Container row for the eval line(s) */
+.dg-psyche-report-row {
+	margin-top: 6px;
+	padding: 6px 8px;
+	border: 1px solid var(--crt-text, #44ff77);
+	background: rgba(0, 0, 0, 0.6);
+}
+/* The actual text block */
+.dg-psyche-report {
+	font-family: var(--dg-crt-font-family, "DG One"), monospace;
+	font-size: 1rem;
+	line-height: 1.6;
+	letter-spacing: 0.04em;
+	color: var(--crt-text, #44ff77);
+	white-space: pre-line;
+	padding: 2px 0;
+}
+#dg-psyche-root .dg-section-title {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+}
+#dg-psyche-report {
+	white-space: pre-line;
+}
+.dg-psyche-actions-row {
+	margin-top: 8px;
+}
+#dg-psyche-sancheck {
+	margin-top: 4px;
+}
+.dg-psyche-actions-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+}
+/* ========================================================================== */
+/* DE-COUPLE FOUNDRY RIGHT SIDEBAR FROM CRT */
+/* ========================================================================== */
+/* Make sure the Foundry right sidebar is relative to viewport, not CRT */
+#ui-right,#sidebar {
+	position: fixed !important;
+	right: 0 !important;
+	top: 0 !important;
+	height: 100% !important;
+}
+/* ========================================================================== */
+/* INVENTORY LAYOUT */
+/* ========================================================================== */
+#dg-view-inventory .dg-inventory-layout {
+	display: flex;
+	gap: 16px;
+	align-items: stretch;
+	margin-top: 8px;
+}
+/* Left column: EQUIPPED */
+#dg-view-inventory .dg-inventory-left {
+	flex: 0 0 35%;
+	display: flex;
+	flex-direction: column;
+}
+/* Right column: WEAPONS + GEAR stacked */
+#dg-view-inventory .dg-inventory-right {
+	flex: 1 1 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+/* Sub-boxes on the right (weapons / gear) */
+#dg-view-inventory .dg-section-subbox {
+	border: 1px solid var(--crt-text);
+	padding: 6px 8px;
+}
+/* Smaller subtitles inside the inventory view */
+#dg-view-inventory .dg-section-subtitle {
+	font-weight: bold;
+	margin-bottom: 4px;
+}
+/* Let the lists actually scroll if they get long */
+#dg-view-inventory .dg-results-list {
+	overflow-y: auto;
+}
+/* Buttons under EQUIPPED */
+#dg-view-inventory .dg-inventory-buttons {
+	margin-top: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+/* ========================================================================== */
+/* TOP STATUS BAR (AGENT + HP/WP/SAN SUMMARY) */
+/* ========================================================================== */
+#dg-crt-status-bar {
+	margin-left: auto;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+	font-size: 1rem;
+	line-height: 1.2;
+	color: var(--crt-text);
+}
+#dg-status-agent {
+	font-weight: bold;
+	text-transform: uppercase;
+}
+#dg-status-lines {
+	display: flex;
+	gap: 6px;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+}
+/* Color hints;
+still “vague” but visually obvious */
+.dg-status-good {
+	color: #00ff00;
+}
+.dg-status-warn {
+	color: #ffcc33;
+}
+.dg-status-bad {
+	color: #ff3333;
+}
+/* ========================================================================== */
+/* ON-SCREEN TOKEN MOVEMENT COMPASS */
+/* ========================================================================== */
+/* On-screen token movement compass (bottom-right) */
+#dg-token-compass {
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	pointer-events: auto;
+	font-family: inherit;
+	/* Scale the whole thing up without breaking the 3×3 layout */
+	transform: scale(var(--dg-compass-scale));
+	transform-origin: bottom right;
+}
+/* Keep the original 3×3 grid so the “rose” layout stays intact */
+#dg-token-compass .dg-compass-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 24px);
+	grid-template-rows: repeat(3, 24px);
+	gap: 2px;
+	padding: 6px;
+	border-radius: 4px;
+	border: 1px solid var(--dg-color-primary);
+	background: rgba(0, 0, 0, 0.7);
+	box-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+#dg-token-compass .dg-compass-btn {
+	border: 1px solid var(--dg-color-primary);
+	background: rgba(0, 0, 0, 0.8);
+	color: var(--dg-color-primary);
+	font-size: 12px;
+	line-height: 1;
+	padding: 0;
+	cursor: pointer;
+	text-align: center;
+}
+#dg-token-compass .dg-compass-btn.dg-compass-c {
+	opacity: 0.4;
+	/* center button looks "inactive" */
+	cursor: default;
+}
+#dg-token-compass .dg-compass-btn:hover:not(.dg-compass-c) {
+	background: color-mix(in srgb, var(--dg-color-secondary) 15%, transparent);
+}
+#dg-token-compass .dg-compass-btn:active:not(.dg-compass-c) {
+	background: color-mix(in srgb, var(--dg-color-secondary) 30%, transparent);
+}
+/* ========================================================================== */
+/* FLOATING BOTTOM QUICK BAR (SKILLS + WEAPONS) */
+/* ========================================================================== */
+#dg-bottom-bar {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	/* only inner bar takes clicks */
+}
+#dg-bottom-bar-inner {
+	max-width: 100%;
+	margin: 0 auto;
+	padding: 4px 8px;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: rgba(0, 0, 0, 0.85);
+	border-top: 1px solid var(--crt-text);
+	box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.9);
+	pointer-events: auto;
+	/* THIS is clickable */
+}
+#dg-bottom-agent {
+	font-size: 0.7rem;
+	white-space: nowrap;
+	color: var(--crt-highlight);
+	flex: 0 0 auto;
+}
+/* Sections for skills & weapons */
+.dg-bottom-section {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex: 1 1 0;
+	min-width: 0;
+}
+.dg-bottom-section-label {
+	font-size: 0.6rem;
+	opacity: 0.75;
+	flex: 0 0 auto;
+}
+.dg-bottom-buttons {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 4px;
+	overflow-x: auto;
+	max-width: 100%;
+}
+/* Buttons */
+.dg-bottom-btn {
+	flex: 0 0 auto;
+	padding: 2px 6px;
+	border: 1px solid var(--crt-text);
+	background: #000;
+	color: var(--crt-text);
+	font-size: 0.6rem;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.dg-bottom-btn:hover {
+	background: var(--crt-text);
+	color: var(--crt-bg);
+}
+/* Floating bottom hotbar specifically for mail bar layout */
+#dg-bottom-hotbar {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: auto;
+	/* Reserve space on the right for the compass */
+	padding-left: 300px;
+	padding-right: 300px;
+	box-sizing: border-box;
+}
+.dg-bottom-mailbar-inner {
+	display: flex;
+	flex-direction: column;
+	/* skills on top, weapons below */
+	gap: 4px;
+	padding: 4px 8px;
+	background: rgba(0, 0, 0, 0.85);
+	border-top: 1px solid var(--Crt-text);
+	/* Prevent content from going under the compass area */
+	max-width: calc(70% - 96px);
+	margin: 0 auto;
+}
+.dg-bottom-skillbar,.dg-bottom-weaponbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	justify-content: center;
+}
+/* ========================================================================== */
+/* MINI CHAT / ROLL FEED WINDOW */
+/* ========================================================================== */
+#dg-mini-chat {
+	position: fixed;
+	left: 0px;
+	bottom: 0px;
+	/* sits above the compass/bottom bar */
+	width: 256px;
+	max-height: 512px;
+	display: flex;
+	flex-direction: column;
+	background: rgba(0, 0, 0, 0.9);
+	border: 1px solid var(--dg-color-accent);
+	box-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+	font-family: inherit;
+	pointer-events: auto;
+}
+#dg-mini-chat-header {
+	padding: 4px 6px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 10px;
+	letter-spacing: 0.1em;
+	border-bottom: 1px solid var(--dg-color-border);
+	color: var(--dg-accent-color);
+}
+#dg-mini-chat-title {
+	flex: 1 1 auto;
+}
+#dg-mini-chat-toggle.dg-button {
+	flex: 0 0 auto;
+	padding: 0 4px;
+	min-width: 0;
+	font-size: 10px;
+	line-height: 1;
+}
+#dg-mini-chat-body {
+	padding: 4px 6px;
+	overflow-y: auto;
+	flex: 1 1 auto;
+}
+/* Tighter styling for roll cards in mini window */
+#dg-mini-chat-body .dg-roll-result {
+	font-size: 25px;
+	margin-bottom: 4px;
+	padding: 3px 4px;
+}
+#dg-mini-chat-body .dg-roll-skill,#dg-mini-chat-body .dg-roll-target {
+	font-size: 25px;
+}
+#dg-mini-chat-body .dg-roll-value {
+	font-size: 25px;
+}
+.dg-mini-chat-entry {
+	margin-bottom: 4px;
+}
+.dg-bank-balances > div {
+	margin-bottom: 2px;
+}
+#dg-bank-log {
+	max-height: 220px;
+	overflow-y: auto;
+}
+/* ========================================================================== */
+/* FULL-SCREEN CRT SCANLINE OVERLAY */
+/* ========================================================================== */
+#dg-crt-scanlines {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 12000;
+	/* above CRT bar, below window apps */
+	overflow: hidden;
+}
+/* Pseudo-elements: moving bar + static scanlines */
+#dg-crt-scanlines::before,#dg-crt-scanlines::after {
+	content: "";
+	position: absolute;
+	pointer-events: none;
+}
+/* Sweeping bright scanline bar */
+#dg-crt-scanlines::before {
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 3px;
+	background: rgba(0, 0, 0, 0.5);
+	opacity: 0;
+	/* start invisible */
+	z-index: 12002;
+	animation: dg-scanline-sweep 6s linear infinite;
+}
+/* Horizontal scanline stripes */
+#dg-crt-scanlines::after {
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 12001;
+	background: linear-gradient(to bottom,transparent 75%,rgba(0, 0, 0, 0.35) 51%);
+	background-size: 100% 4px;
+	/* NEW: intensity driven by CSS var (0–1) */
+	opacity: var(--dg-scanline-opacity, 0.4);
+	/* slow drift instead of harsh step reset */
+	animation: dg-scanlines-drift 4s linear infinite;
+}
+/* Sweeping bar: fade in while on-screen, fade out before reset */
+@keyframes dg-scanline-sweep {
+	0% {
+		transform: translate3d(0, -120%, 0);
+		/* off-screen above */
+		opacity: 0;
+	}
+	10% {
+		opacity: 0.8;
+		/* fade in as it enters */
+	}
+	90% {
+		transform: translate3d(0, 120%, 0);
+		/* off-screen below */
+		opacity: 0.8;
+	}
+	100% {
+		transform: translate3d(0, 150%, 0);
+		/* further below + invisible */
+		opacity: 0;
+	}
+}
+/* Scanline texture: subtle smooth drift, no visible snap */
+@keyframes dg-scanlines-drift {
+	0% {
+		background-position: 0 0;
+	}
+	100% {
+		background-position: 0 4px;
+		/* one full pattern height */
+	}
+}
+/* Allow JS / body class to hard-toggle scanlines completely off */
+body.dg-scanlines-off #dg-crt-scanlines::before,body.dg-scanlines-off #dg-crt-scanlines::after {
+	opacity: 0 !important;
+}
+/* ========================================================================== */
+/* FONT SIZE SYSTEM – OVERRIDES / UTILITIES */
+/* ========================================================================== */
+/* Global base sizes – tweak these to taste */
+:root {
+	--dg-font-size-base: 20px;
+	/* overall body text */
+	--dg-font-size-sm: 22px;
+	--dg-font-size-md: 24px;
+	--dg-font-size-lg: 26px;
+	--dg-font-size-xl: 30px;
+}
+/* Make DG CRT body text bigger */
+body.dg-crt-on {
+	font-size: var(--dg-font-size-base);
+}
+/* Bump key UI bits */
+.dg-menu-item {
+	font-size: 1.4rem;
+	/* main top menu labels */
+}
+.dg-section-title {
+	font-size: 1rem;
+	/* RECORDS / MAIL / etc headers */
+}
+.dg-agent-stats-block {
+	font-size: 0.95rem;
+}
+.dg-roll-value {
+	font-size: 25px;
+}
+/* Optional utility classes you can sprinkle into templates later */
+.dg-text-xs {
+	font-size: 0.75rem;
+}
+.dg-text-sm {
+	font-size: var(--dg-font-size-sm);
+}
+.dg-text-md {
+	font-size: var(--dg-font-size-md);
+}
+.dg-text-lg {
+	font-size: var(--dg-font-size-lg);
+}
+.dg-text-xl {
+	font-size: var(--dg-font-size-xl);
+}
+/* ========================================================================== */
+/* FORCE MAIN CRT DROPDOWN TO SCROLL */
+/* ========================================================================== */
+/* Keep the top HUD fixed and let only the dropdown content scroll */
+#dg-crt-container {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: auto;
+	width: 100%;
+	pointer-events: none;
+	z-index: 0;
+}
+/* The visible shell (title + menu + dropdown area) */
+#dg-crt-screen {
+	pointer-events: auto;
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+	background: rgba(0, 0, 0, 0.35);
+	border-bottom: 1px solid var(--crt-text);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	/* important: content itself scrolls */
+}
+/* MAIN DROPDOWN PANE:* - Height limited to viewport,* - Scrolls internally when content is too tall*/
+#dg-crt-content {
+	display: none;
+	position: relative;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 16px;
+	background: rgba(0, 0, 0, 0.35);
+	border-bottom: 1px solid var(--crt-text);
+	/* Header + menu are ~70–80px;
+	adjust if needed */
+	max-height: calc(100vh - 80px) !important;
+	overflow-y: auto !important;
+}
+#dg-crt-content.dg-open {
+	display: block;
+}
+/* Make sure inner views don't fight the scroll* The parent (#dg-crt-content) should handle it.*/
+.dg-view {
+	display: none;
+	max-height: none !important;
+	overflow: visible !important;
+}
+.dg-view.active {
+	display: block;
+}
+/* Big “overlay” windows inside the CRT (records / vehicle / case form)* are already capped, but we re-assert here just in case.*/
+#dg-case-study-form,#dg-vehicle-form,.dg-record-window {
+	max-height: 90vh;
+	overflow-y: auto;
+}
+/* Psyche eval + inventory views live inside the dropdown,* so they should not create new scroll containers.*/
+#dg-psyche-root,#dg-view-inventory,#dg-view-mail,#dg-view-records {
+	max-height: none !important;
+	overflow: visible !important;
+}
+/* Make the skillbar obey the screen font setting */
+.dg-skillbar,.dg-skillbar *,.dg-mail-skillbar,.dg-mail-skillbar * {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace !important;
+}
+.dg-bottom-toggle,.dg-bottom-toggle * {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace !important;
+}
+/* Example – put this in your main CSS, not in the HTML file */
+#dg-feed-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+#dg-feed-status {
+	font-size: 0.85em;
+	opacity: 0.8;
+}
+.dg-feed-entry-header {
+	display: flex;
+	justify-content: space-between;
+	font-size: 0.8em;
+	margin-bottom: 2px;
+}
+.dg-feed-entry-tag {
+	font-weight: bold;
+}
+.dg-feed-entry-body {
+	margin-top: 2px;
+}
+/* Hide ENTIRE bottom hotbar (skills header + skills + weapons) */
+.dg-hide-skillbar #dg-bottom-hotbar {
+	display: none !important;
+}
+/* Hide the token compass / D-pad */
+.dg-hide-token-dpad #dg-token-compass {
+	display: none !important;
+}
+/* Hide the mini roll feed (bottom-left) */
+.dg-hide-mini-rollfeed #dg-mini-chat {
+	display: none !important;
+}
+/* Fullscreen web overlay */
+#dg-web-overlay {
+	position: fixed;
+	inset: 0;
+	/* top:0;
+	right:0;
+	bottom:0;
+	left:0 */
+	display: none;
+	/* gets set to flex by JS */
+	align-items: stretch;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.8);
+	/* dim background, tweak if needed */
+	z-index: 12000;
+	/* above CRT bar */
+}
+/* Make the web window fill the overlay */
+#dg-web-window {
+	position: relative;
+	width: 95%;
+	height: 95%;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+}
+/* Header sits at the top, content fills the rest */
+#dg-web-window-header {
+	flex: 0 0 auto;
+}
+/* Content area grows to fill remaining space */
+#dg-web-window-content {
+	flex: 1 1 auto;
+	display: flex;
+	overflow: hidden;
+}
+/* Iframe fills the content area */
+#dg-web-frame {
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	border: none;
+}
+#dg-audio-controls {
+	margin-top: 10px;
+}
+#dg-audio-controls .dg-audio-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+}
+#dg-audio-controls .dg-audio-label {
+	display: inline-block;
+	width: 80px;
+}
+#dg-audio-controls input[type="range"] {
+	flex: 1;
+}
+/* Root container */
+.dg-psyche-root {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+/* Name header */
+.dg-psyche-actor-name {
+	font-family: var(--dg-font-mono, monospace);
+	font-size: 0.9rem;
+	letter-spacing: 0.08em;
+}
+/* Two columns */
+.dg-psyche-columns {
+	display: flex;
+	flex-direction: row;
+	gap: 12px;
+	align-items: flex-start;
+}
+/* Columns share height but can be slightly different widths */
+.dg-psyche-column {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+/* Left: report a bit wider */
+.dg-psyche-column-left {
+	flex: 1 1 40%;
+}
+/* Right: lists */
+.dg-psyche-column-right {
+	flex: 1 1 60%;
+}
+/* Report text: preserve line breaks from _buildPsycheReport */
+.dg-psyche-report {
+	white-space: pre-wrap;
+	font-family: var(--dg-font-mono, monospace);
+	font-size: 1.8vh;
+	line-height: 1.4;
+	padding: 6px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+}
+/* Optional: scroll if the report gets huge */
+.dg-psyche-report {
+	max-height: 768vh;
+	overflow-y: auto;
+}
+/* Right-hand blocks */
+.dg-psyche-block {
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	padding: 6px;
+}
+/* Lists */
+.dg-results-list {
+	list-style: none;
+	margin: 4px 0 0;
+	padding: 0;
+}
+.dg-result-item {
+	font-family: var(--dg-font-mono, monospace);
+	font-size: 1em;
+	padding: 2px 0;
+	cursor: pointer;
+}
+.dg-no-entries {
+	opacity: 0.6;
+	cursor: default;
+}
+.dg-psyche-block {
+	margin-top: 8px;
+}
+/* ================================PSYCHE: ADAPTATION BLOCK================================ */
+#dg-psyche-adaptations.dg-psyche-block {
+	margin-top: 8px;
+	padding: 6px 8px;
+	border-top: 1px solid var(dg-color-accent);
+	font-size: 11px;
+	line-height: 1.3;
+}
+#dg-psyche-adaptations .dg-section-subtitle {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin-bottom: 4px;
+	opacity: 0.85;
+}
+/* Each row: label + 3 checkboxes + tag */
+.dg-psyche-adapt-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 4px;
+}
+/* “VIOLENCE” / “HELPLESSNESS” label */
+.dg-psyche-adapt-label {
+	min-width: 90px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	font-size: 10px;
+	text-transform: uppercase;
+}
+/* Checkboxes — keep them small and inline */
+.dg-psyche-adapt-checkbox {
+	width: 13px;
+	height: 13px;
+	cursor: pointer;
+	margin: 0 2px;
+	color: dg-color-accent;
+	*/
+}
+/* Adapted tag (filled in by JS when adapted) */
+.dg-psyche-adapt-tag {
+	font-size: 9px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 1px 5px;
+	border-radius: 2px;
+	border: 1px solid transparent;
+	margin-left: 4px;
+	opacity: 0.65;
+}
+/* When you set content in JS for adapted states,you can also add a class like .is-adapted */
+.dg-psyche-adapt-tag.is-adapted {
+	border-color: var(--dg-color-accent);
+	opacity: 1;
+}
+/* ============================================================INVENTORY CATALOG DIALOG============================================================ */
+.dg-catalog-dialog {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 6px;
+	font-family: "Press Start 2P", "VT323", monospace;
+	font-size: 11px;
+	line-height: 1.4;
+}
+/* Reuse your existing form group/input look, just tighten spacing */
+.dg-catalog-dialog .dg-form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.dg-catalog-dialog label {
+	font-size: 10px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	opacity: 0.8;
+}
+/* Catalog list container */
+.dg-catalog-list {
+	max-height: 260px;
+	overflow-y: auto;
+	margin-top: 4px;
+	border: 1px solid var(dg-color-primary);
+	padding: 2px;
+}
+/* Individual rows */
+.dg-catalog-row {
+	padding: 4px 6px;
+	margin-bottom: 2px;
+	border-radius: 2px;
+	border: 1px solid transparent;
+	display: flex;
+	flex-direction: column;
+	cursor: pointer;
+	background: rgba(0, 0, 0, 0.6);
+	transition:background 80ms linear,border-color 80ms linear,transform 80ms linear;
+}
+.dg-catalog-row:last-child {
+	margin-bottom: 0;
+}
+.dg-catalog-row-main {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4px;
+}
+.dg-catalog-row-name {
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.dg-catalog-row-sub {
+	font-size: 10px;
+	opacity: 0.8;
+	margin-top: 1px;
+}
+/* Hover / focus states */
+.dg-catalog-row:hover {
+	background: rgba(0, 255, 128, 0.06);
+	border-color: rgba(0, 255, 128, 0.4);
+	transform: translateX(1px);
+}
+.dg-catalog-row:active {
+	background: rgba(0, 255, 128, 0.12);
+	border-color: rgba(0, 255, 128, 0.7);
+	transform: translateX(0);
+}
+/* Tag pill (expense or type) */
+.dg-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 4px;
+	border-radius: 999px;
+	border: 1px solid rgba(0, 255, 128, 0.5);
+	font-size: 9px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	white-space: nowrap;
+	opacity: 0.9;
+}
+/* Give the OTHER / CUSTOM button a little emphasis */
+.dg-catalog-dialog .dg-button#dg-catalog-custom {
+	flex: 0 0 auto;
+	font-size: 10px;
+	padding: 3px 6px;
+}
+/* ============================================================INVENTORY LISTS (left panel) – slight polish============================================================ */
+#dg-inventory-equipped,#dg-inventory-weapons,#dg-inventory-gear {
+	max-height: auto;
+	overflow-y: auto;
+}
+/* Make list items a bit neater */
+.dg-result-item {
+	padding: 3px 5px;
+	border-radius: 2px;
+	margin-bottom: 1px;
+}
+.dg-result-item.dg-no-entries {
+	opacity: 0.5;
+	font-style: italic;
+}
+/* Right-click & middle-click hints – optional (GM can explain verbally) */
+/* You can add a subtle underline on hover to hint interactivity */
+.dg-result-item:hover {
+	background: rgba(0, 255, 128, 0.06);
+}
+/* ============================================================INVENTORY CATALOG DIALOG============================================================ */
+.dg-catalog-dialog {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 6px;
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	font-size: 11px;
+	line-height: 1.4;
+}
+/* Reuse your existing form group/input look, just tighten spacing */
+.dg-catalog-dialog .dg-form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.dg-catalog-dialog label {
+	font-size: 10px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	opacity: 0.8;
+}
+/* Catalog list container */
+.dg-catalog-list {
+	max-height: 260px;
+	overflow-y: auto;
+	margin-top: 4px;
+	border: 1px solid color-mix(in srgb, var(--dg-color-accent) 40%, transparent);
+	padding: 2px;
+}
+/* Individual rows */
+.dg-catalog-row {
+	padding: 4px 6px;
+	margin-bottom: 2px;
+	border-radius: 2px;
+	border: 1px solid transparent;
+	display: flex;
+	flex-direction: column;
+	cursor: pointer;
+	background: rgba(0, 0, 0, 0.6);
+	transition:background 80ms linear,border-color 80ms linear,transform 80ms linear;
+}
+.dg-catalog-row:last-child {
+	margin-bottom: 0;
+}
+.dg-catalog-row-main {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4px;
+}
+.dg-catalog-row-name {
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.dg-catalog-row-sub {
+	font-size: 10px;
+	opacity: 0.8;
+	margin-top: 1px;
+}
+/* Hover / focus states – driven by CRT accent */
+.dg-catalog-row:hover {
+	background: color-mix(in srgb, var(--dg-color-accent) 10%, transparent);
+	border-color: color-mix(in srgb, var(--dg-color-accent) 55%, transparent);
+	transform: translateX(1px);
+}
+.dg-catalog-row:active {
+	background: color-mix(in srgb, var(--dg-color-accent) 18%, transparent);
+	border-color: var(--dg-color-accent);
+	transform: translateX(0);
+}
+/* Tag pill (expense or type) */
+.dg-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 4px;
+	border-radius: 999px;
+	border: 1px solid color-mix(in srgb, var(--dg-color-accent) 55%, transparent);
+	font-size: 9px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	white-space: nowrap;
+	opacity: 0.9;
+	color: var(--crt-text);
+}
+/* Give the OTHER / CUSTOM button a little emphasis */
+.dg-catalog-dialog .dg-button#dg-catalog-custom {
+	flex: 0 0 auto;
+	font-size: 10px;
+	padding: 3px 6px;
+}
+/* ============================================================INVENTORY LISTS (left panel) – slight polish============================================================ */
+/* Make list items a bit neater */
+.dg-result-item {
+	padding: 3px 5px;
+	border-radius: 2px;
+	margin-bottom: 1px;
+}
+.dg-result-item.dg-no-entries {
+	opacity: 0.5;
+	font-style: italic;
+}
+/* Hover state – now theme-aware (affects weapons + gear lists too) */
+.dg-result-item:hover {
+	background: color-mix(in srgb, var(--dg-color-accent) 10%, transparent);
+}
+/* ========================= */
+/* PRICE CATALOG DIALOG */
+/* ========================= */
+.dg-price-catalog {
+	font-size: 12px;
+	line-height: 1.3;
+	color: var(--crt-text);
+}
+/* Filters row at top of dialog */
+.dg-price-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 6px;
+	padding: 4px;
+	border: 1px solid color-mix(in srgb, var(--dg-color-accent) 40%, transparent);
+	background: rgba(0, 0, 0, 0.6);
+}
+.dg-price-filter-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.dg-price-filter-label select,.dg-price-filter-label input[type="text"] {
+	background: rgba(0, 0, 0, 0.8);
+	border: 1px solid color-mix(in srgb, var(--dg-color-accent) 55%, transparent);
+	color: var(--crt-text);
+	font-size: 12px;
+	padding: 1px 4px;
+	outline: none;
+}
+.dg-price-filter-label select:focus,.dg-price-filter-label input[type="text"]:focus {
+	border-color: var(--dg-color-accent);
+	box-shadow: 0 0 4px color-mix(in srgb, var(--dg-color-accent) 60%, transparent);
+}
+/* Scrollable body of the catalog */
+.dg-price-body {
+	margin-top: 4px;
+	max-height: 320px;
+	/* tune for your dialog size */
+	overflow-y: auto;
+	padding-right: 4px;
+}
+/* Each expense band block */
+.dg-price-block {
+	margin-bottom: 12px;
+	border-top: 1px solid color-mix(in srgb, var(--dg-color-accent) 30%, transparent);
+	padding-top: 4px;
+}
+/* Subtitle per expense band */
+.dg-price-block .dg-subtitle {
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	margin-bottom: 2px;
+}
+/* List layout */
+.dg-price-list.dg-results-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+/* Individual rows */
+.dg-price-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 2px 0;
+	border-bottom: 1px dotted color-mix(in srgb, var(--dg-color-accent) 25%, transparent);
+	cursor: default;
+}
+.dg-price-row:last-child {
+	border-bottom: none;
+}
+/* Name + sublabel (category) */
+.dg-price-name {
+	font-size: 0.9rem;
+	max-width: 220px;
+	word-wrap: break-word;
+}
+/* Right side tags (WEAPON / GEAR / SERVICE / VEHICLE) */
+.dg-price-tags {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.dg-price-tags .dg-tag {
+	font-size: 10px;
+	padding: 0 4px;
+	border: 1px solid color-mix(in srgb, var(--dg-color-accent) 55%, transparent);
+	border-radius: 2px;
+	text-transform: uppercase;
+	opacity: 0.85;
+}
+/* Hover – fully theme-aware */
+.dg-price-row:hover {
+	background: color-mix(in srgb, var(--dg-color-accent) 10%, transparent);
+}
+/* ============================================================GLOBAL BUTTON HOVER – FOLLOWS CURRENT CRT THEME============================================================ */
+/* All “primary” buttons in the DG UI */
+.dg-button:hover,.dg-bottom-btn:hover,#dg-login-button:hover,.dg-avatar-button:hover,.dg-mod-btn.dg-button:not(.dg-mod-active):hover,#dg-token-compass .dg-compass-btn:hover:not(.dg-compass-c),.app.window-app.dialog .dialog-buttons button:hover {
+	background: var(--crt-highlight);
+	color: var(--crt-bg);
+	border-color: var(--crt-highlight);
+}
+/* Any pill/tag buttons that should tint on hover */
+.dg-tag:hover {
+	border-color: var(--crt-highlight);
+}
+/* List rows that act like buttons */
+.dg-result-item:hover,.dg-catalog-row:hover,.dg-price-row:hover {
+	background: color-mix(in srgb, var(--crt-highlight) 15%, transparent);
+	border-color: var(--crt-highlight);
+}
+/* ========================================================================== */
+/* COMBAT TRACKER – MANUAL TABLE */
+/* ========================================================================== */
+:root {
+	/* Fallbacks in case you don't already have these */
+	--dg-accent-color: #00ff88;
+	--dg-accent-soft: rgba(0, 255, 136, 0.15);
+	--dg-border-soft: rgba(255, 255, 255, 0.15);
+	--dg-text-dim: rgba(255, 255, 255, 0.7);
+	--dg-danger-color: #ff5c5c;
+}
+/* Main view container */
+#dg-view-combat {
+	flex-direction: column;
+	height: 100%;
+	padding: 6px 8px;
+	box-sizing: border-box;
+}
+/* Root inside the view */
+#dg-combat-root {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+/* -------------------------------------------------------------------------- */
+/* HEADER */
+/* -------------------------------------------------------------------------- */
+.dg-combat-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 6px;
+	margin-bottom: 6px;
+	border-bottom: 1px solid var(--dg-border-soft);
+}
+.dg-combat-header-main {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+#dg-combat-title {
+	font-size: 1.2rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+#dg-combat-round,#dg-combat-turn {
+	font-size: 1rem;
+	color: var(--dg-text-dim);
+}
+/* Controls on the right */
+.dg-combat-header-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	justify-content: flex-end;
+}
+.dg-combat-selected {
+	font-size: 1rem;
+	padding: 2px 6px;
+	border: 1px solid var(--dg-border-soft);
+	border-radius: 999px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+/* Small CRT-style buttons */
+.dg-btn-small {
+	font-size: 1em;
+	padding: 2px 6px;
+	border-radius: 999px;
+	background: transparent;
+	border: 1px solid var(--dg-border-soft);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	cursor: pointer;
+	outline: none;
+}
+.dg-btn-small:hover {
+	border-color: var(--dg-accent-color);
+	box-shadow: 0 0 4px var(--dg-accent-color);
+}
+/* -------------------------------------------------------------------------- */
+/* STATUS LINE */
+/* -------------------------------------------------------------------------- */
+.dg-combat-status {
+	min-height: 16px;
+	font-size: 1em;
+	color: var(--dg-text-dim);
+	padding: 0 4px 4px 4px;
+}
+/* -------------------------------------------------------------------------- */
+/* WRAPPER */
+/* -------------------------------------------------------------------------- */
+#dg-manual-combat-tracker {
+	padding: 8px;
+}
+#dg-combat-root {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+/* -------------------------------------------------------------------------- */
+/* TABLE LAYOUT */
+/* -------------------------------------------------------------------------- */
+.dg-combat-table {
+	border: 1px solid var(--dg-border-soft);
+	border-radius: 4px;
+	padding: 2px;
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+/* Header row + data rows share the same grid layout */
+.dg-combat-header-row,.dg-combat-row {
+	display: grid;
+	/* 8 columns:# | NAME | DEX | AMMO | STATUS | ARMOR | MOD | CONDITIONS/NOTES */
+	grid-template-columns:32px /* idx */
+	1.8fr /* name */
+	0.6fr /* DEX */
+	0.8fr /* AMMO */
+	1.0fr /* STATUS */
+	1.0fr /* ARMOR */
+	0.6fr /* MOD */
+	2fr;
+	/* FLAGS / NOTES */
+	column-gap: 4px;
+	align-items: center;
+}
+/* Header styling */
+.dg-combat-header-row {
+	border-bottom: 1px solid var(--dg-border-soft);
+	font-size: 0.9em;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 2px 4px;
+}
+/* Shared column styling */
+.dg-combat-col {
+	padding: 0 4px;
+	box-sizing: border-box;
+}
+/* Column alignment tweaks */
+.dg-combat-col-idx {
+	text-align: right;
+}
+.dg-combat-col-init,.dg-combat-col-hp,.dg-combat-col-armor,.dg-combat-col-mod {
+	text-align: right;
+	font-family: monospace;
+}
+/* Name: clamp + ellipsis */
+.dg-combat-col-name {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+/* Flags / conditions: eat remaining space nicely */
+.dg-combat-col-flags {
+	font-size: 0.9em;
+	text-align: left;
+}
+/* -------------------------------------------------------------------------- */
+/* ROWS */
+/* -------------------------------------------------------------------------- */
+.dg-combat-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+.dg-combat-row {
+	padding: 2px 4px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	font-size: 0.95em;
+	cursor: pointer;
+	transition: background 80ms ease-out, box-shadow 80ms ease-out;
+}
+.dg-combat-row:last-child {
+	border-bottom: none;
+}
+.dg-combat-row:hover {
+	background: rgba(255, 255, 255, 0.04);
+}
+/* Active row highlight */
+.dg-combat-row-active {
+	background: var(--dg-accent-soft);
+	box-shadow: 0 0 6px rgba(0, 0, 0, 0.8) inset;
+	border-left: 2px solid var(--dg-accent-color);
+}
+/* Slightly brighter AMMO on active row */
+.dg-combat-row-active .dg-combat-col-hp {
+	font-weight: 600;
+}
+/* -------------------------------------------------------------------------- */
+/* INPUT ROW */
+/* -------------------------------------------------------------------------- */
+.dg-combat-input-row {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.dg-combat-input-row input {
+	width: 100%;
+	box-sizing: border-box;
+	background: transparent;
+	border: 1px solid var(--dg-border-soft);
+	padding: 2px 4px;
+	font-size: 1em;
+	color: inherit;
+}
+.dg-combat-input-row input:focus {
+	outline: none;
+	border-color: var(--dg-accent-color);
+	box-shadow: 0 0 4px var(--dg-accent-color);
+}
+/* Dark theme for modifier presets list */
+.dg-combat-edit-form select,.dg-combat-edit-form select option,.dg-combat-edit-form select optgroup {
+	background-color: var(--dg-bg-deep, #000);
+	color: var(--dg-text, #e0e0e0);
+}
+/* Make optgroup labels readable + distinct */
+.dg-combat-edit-form select optgroup {
+	font-weight: 600;
+	color: var(--dg-text-dim, #aaaaaa);
+}
+/* Optional: ensure disabled-looking options don't fade too much */
+.dg-combat-edit-form select option {
+	font-weight: 400;
+}
+.dg-combat-header-main {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.dg-combat-round {
+	padding: 2px 6px;
+	border: 1px solid var(--dg-border-soft);
+	border-radius: 3px;
+	font-size: 0.85em;
+	text-transform: uppercase;
+	color: var(--dg-text-dim);
+}

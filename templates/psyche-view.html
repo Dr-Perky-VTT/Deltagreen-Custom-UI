@@ -1,0 +1,111 @@
+<!-- psyche-view.html -->
+
+<div id="dg-psyche-root" class="dg-section">
+  <div class="dg-section-title">
+    PSYCHE PROFILE
+    <span id="dg-psyche-actor-name" class="dg-mail-actor-name">LOGGED IN: —</span>
+  </div>
+
+  <!-- Two-column layout -->
+  <div id="dg-psyche-columns" class="dg-psyche-columns">
+
+    <!-- LEFT: REPORT + ACTION BUTTONS ------------------------------------ -->
+    <section id="dg-psyche-column-left" class="dg-psyche-column dg-psyche-column-left">
+      <div class="dg-section">
+        <div class="dg-section-title">PSYCHOLOGICAL EVALUATION:</div>
+        <div class="dg-psyche-report-row">
+          <div id="dg-psyche-report" class="dg-psyche-report">
+            NO SUBJECT DATA AVAILABLE.
+          </div>
+        </div>
+      </div>
+
+      <div class="dg-psyche-actions-row">
+        <button id="dg-psyche-sancheck" class="dg-button">RUN SANITY CHECK</button>
+        <button id="dg-psyche-project-bond" class="dg-button">PROJECT ONTO BOND</button>
+        <button id="dg-psyche-repress-insanity" class="dg-button">REPRESS EPISODE</button>
+      </div>
+
+      <div class="dg-psyche-actions-row">
+        <button id="dg-psyche-add-bond" class="dg-button">ADD BOND</button>
+        <button id="dg-psyche-add-motivation" class="dg-button">ADD MOTIVATION / DISORDER</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: MOTIVATIONS / DISORDERS / BONDS / ADAPTATIONS ------------- -->
+    <section id="dg-psyche-column-right" class="dg-psyche-column dg-psyche-column-right">
+      <!-- MOTIVATIONS -->
+      <div class="dg-section">
+        <div class="dg-section-title">MOTIVATIONS</div>
+        <ul class="dg-results-list" id="dg-motivations-list">
+          <li class="dg-result-item dg-no-entries">NO MOTIVATIONS RECORDED</li>
+        </ul>
+      </div>
+
+      <!-- DISORDERS -->
+      <div class="dg-section">
+        <div class="dg-section-title">DISORDERS</div>
+        <ul class="dg-results-list" id="dg-disorders-list">
+          <li class="dg-result-item dg-no-entries">NO DISORDERS RECORDED</li>
+        </ul>
+      </div>
+
+      <!-- BONDS -->
+      <div class="dg-section">
+        <div class="dg-section-title">BONDS</div>
+        <ul class="dg-results-list" id="dg-bonds-list">
+          <li class="dg-result-item dg-no-entries">NO BONDS RECORDED</li>
+        </ul>
+      </div>
+
+      <!-- ADAPTATION CHECKBOXES -->
+   <div class="dg-section">
+        <div class="dg-section-title">ADAPTATION INCIDENTS</div>     
+	 <div id="dg-psyche-adaptations" class="dg-psyche-block">
+      
+
+        <div class="dg-psyche-adapt-row">
+          <span class="dg-psyche-adapt-label">VIOLENCE</span>
+
+          <input type="checkbox"
+                 class="dg-psyche-adapt-checkbox"
+                 data-path="system.sanity.adaptations.violence.incident1" />
+          <input type="checkbox"
+                 class="dg-psyche-adapt-checkbox"
+                 data-path="system.sanity.adaptations.violence.incident2" />
+          <input type="checkbox"
+                 class="dg-psyche-adapt-checkbox"
+                 data-path="system.sanity.adaptations.violence.incident3" />
+
+          <span class="dg-psyche-adapt-tag"
+                id="dg-psyche-violence-adapted"
+                title="Adapted to Violence">
+            <!-- filled by JS when adapted -->
+          </span>
+        </div>
+
+        <div class="dg-psyche-adapt-row">
+          <span class="dg-psyche-adapt-label">HELPLESSNESS</span>
+
+          <input type="checkbox"
+                 class="dg-psyche-adapt-checkbox"
+                 data-path="system.sanity.adaptations.helplessness.incident1" />
+          <input type="checkbox"
+                 class="dg-psyche-adapt-checkbox"
+                 data-path="system.sanity.adaptations.helplessness.incident2" />
+          <input type="checkbox"
+                 class="dg-psyche-adapt-checkbox"
+                 data-path="system.sanity.adaptations.helplessness.incident3" />
+
+          <span class="dg-psyche-adapt-tag"
+                id="dg-psyche-helplessness-adapted"
+                title="Adapted to Helplessness">
+            <!-- filled by JS when adapted -->
+          </span>
+        </div>
+      </div>
+	  </div>
+    </section>
+
+  </div>
+</div>

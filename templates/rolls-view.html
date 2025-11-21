@@ -1,0 +1,111 @@
+<!-- rolls-view.html -->
+<div id="dg-rolls-root" class="dg-section">
+  <div class="dg-section-title">
+    ROLL MONITOR
+    <span id="dg-rolls-actor-name" class="dg-mail-actor-name">
+      LOGGED IN: —
+    </span>
+  </div>
+
+  <!-- SAN + HP / WP Status Bar -->
+  <div class="dg-mail-skillbar dg-mail-hpwpbar">
+    <button id="dg-san-check-btn" class="dg-button dg-mail-statbutton">
+      SAN CHECK
+    </button>
+
+    <button
+      class="dg-button dg-mail-statbutton dg-hpwp-box"
+      id="dg-hp-box"
+    >
+      HP: -- / --
+    </button>
+
+    <button
+      class="dg-button dg-mail-statbutton dg-hpwp-box"
+      id="dg-wp-box"
+    >
+      WP: -- / --
+    </button>
+  </div>
+
+  <!-- STAT / LUCK HOTBAR -->
+  <div class="dg-mail-skillbar dg-mail-statbar">
+    <button class="dg-button dg-stat-roll-btn" data-stat="str">STRENGTH</button>
+    <button class="dg-button dg-stat-roll-btn" data-stat="con">CONSTITUTION</button>
+    <button class="dg-button dg-stat-roll-btn" data-stat="dex">DEXTERITY</button>
+    <button class="dg-button dg-stat-roll-btn" data-stat="int">INTELLIGENCE</button>
+    <button class="dg-button dg-stat-roll-btn" data-stat="pow">POWER</button>
+    <button class="dg-button dg-stat-roll-btn" data-stat="cha">CHARISMA</button>
+    <button id="dg-luck-roll-btn" class="dg-button">LUCK</button>
+  </div>
+
+  <!-- BASE SKILL HOTBAR (buttons will hide if <10%) -->
+  <div class="dg-mail-skillbar dg-mail-base-skillbar">
+    <button class="dg-button dg-skill-roll-btn" data-skill="accounting">ACCOUNTING</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="alertness">ALERTNESS</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="anthropology">ANTHROPOLOGY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="archeology">ARCHEOLOGY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="artillery">ARTILLERY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="athletics">ATHLETICS</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="bureaucracy">BUREAUCRACY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="computer_science">COMPUTER SCIENCE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="criminology">CRIMINOLOGY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="demolitions">DEMOLITIONS</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="disguise">DISGUISE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="dodge">DODGE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="drive">DRIVE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="firearms">FIREARMS</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="first_aid">FIRST AID</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="forensics">FORENSICS</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="heavy_machiner">HEAVY MACHINERY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="heavy_weapons">HEAVY WEAPONS</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="history">HISTORY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="humint">HUMINT</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="law">LAW</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="medicine">MEDICINE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="melee_weapons">MELEE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="navigate">NAVIGATE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="occult">OCCULT</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="persuade">PERSUADE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="pharmacy">PHARMACY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="psychotherapy">PSYCHOTHERAPY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="ride">RIDE</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="search">SEARCH</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="sigint">SIGINT</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="stealth">STEALTH</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="surgery">SURGERY</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="survival">SURVIVAL</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="swim">SWIM</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="unarmed_combat">UNARMED COMBAT</button>
+    <button class="dg-button dg-skill-roll-btn" data-skill="unnatural">UNNATURAL</button>
+    <!-- Typed-skill buttons get appended here -->
+  </div>
+    <div class="dg-mail-skillbar">
+<button id="dg-apply-skill-improvements" class="dg-mail-statbutton">
+ ☣☣☣ APPLY LESSONS FROM FAILURE ☣☣☣
+</button>
+</div>
+  <!-- MODIFIER BAR -->
+  <div class="dg-mail-skillbar dg-mail-modbar">
+    <button class="dg-button dg-mod-btn" data-mod="-40">-40</button>
+	<button class="dg-button dg-mod-btn" data-mod="-20">-20</button>
+    <button class="dg-button dg-mod-btn" data-mod="-10">-10</button>
+    <button class="dg-button dg-mod-btn" data-mod="0">0</button>
+    <button class="dg-button dg-mod-btn" data-mod="10">+10</button>
+    <button class="dg-button dg-mod-btn" data-mod="20">+20</button>
+    <button class="dg-button dg-mod-btn" data-mod="40">+40</button>
+  </div>
+
+  <!-- WEAPON HOTBAR -->
+<div id="dg-rolls-weapon-hotbar" class="dg-mail-modbar"></div>>
+          
+  <!-- Compact scrollable roll history window (you can wire this later if you want history too) -->
+  <div class="dg-section">
+  <div
+    id="dg-rolls-window"
+    style="margin-top: 12px; padding: 6px; max-height: 260px; overflow-y: auto;">
+    <div id="dg-rolls-body" class="dg-rolls-body">
+    </div>
+  </div>
+  </div>
+</div>

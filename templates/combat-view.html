@@ -1,0 +1,69 @@
+<div id="dg-manual-combat-tracker" class="dg-manual-combat-tracker">
+  <div id="dg-combat-root">
+    <!-- Header -->
+    <div class="dg-combat-header">
+      <div class="dg-combat-header-main">
+        <span id="dg-combat-title">MANUAL COMBAT TRACKER</span>
+		  <span id="dg-combat-round" class="dg-combat-round">ROUND 1</span>
+      </div>
+      <div class="dg-combat-header-controls">
+        <button id="dg-manual-sort-dex" class="dg-btn-small">SORT BY DEX</button>
+        <button id="dg-manual-reset" class="dg-btn-small">CLEAR TABLE</button>
+		  <button id="dg-manual-next-turn" class="dg-btn-small">NEXT TURN</button>
+      </div>
+    </div>
+
+    <!-- Helper text -->
+    <div id="dg-combat-status" class="dg-combat-status">
+      Type a row, click ADD. Double-click a row to edit status / armor / conditions.
+      Right-click a row to delete it. Click AMMO to spend, right-click AMMO to reload.
+    </div>
+
+    <!-- Table: header + input row + list -->
+    <div class="dg-combat-table">
+      <!-- Column headers -->
+      <div class="dg-combat-header-row">
+        <div class="dg-combat-col dg-combat-col-idx">#</div>
+        <div class="dg-combat-col dg-combat-col-name">NAME</div>
+        <div class="dg-combat-col dg-combat-col-init">DEX</div>
+        <div class="dg-combat-col dg-combat-col-hp">AMMO</div>
+        <div class="dg-combat-col dg-combat-col-status">STATUS</div>
+        <div class="dg-combat-col dg-combat-col-armor">ARMOR</div>
+        <div class="dg-combat-col dg-combat-col-mod">MOD</div>
+        <div class="dg-combat-col dg-combat-col-flags">CONDITIONS / NOTES</div>
+      </div>
+
+      <!-- Input row -->
+      <div class="dg-combat-row dg-combat-input-row">
+        <div class="dg-combat-col dg-combat-col-idx"></div>
+
+        <div class="dg-combat-col dg-combat-col-name">
+          <input id="dg-manual-name" type="text" placeholder="Name" />
+        </div>
+
+        <div class="dg-combat-col dg-combat-col-init">
+          <input id="dg-manual-dex" type="number" placeholder="DEX" />
+        </div>
+
+        <div class="dg-combat-col dg-combat-col-hp">
+          <input id="dg-manual-ammo" type="text" placeholder="Clip size" />
+        </div>
+
+        <!-- These three cells are just placeholders; you edit status/armor/mod in the dialog -->
+        <div class="dg-combat-col dg-combat-col-status"></div>
+        <div class="dg-combat-col dg-combat-col-armor"></div>
+        <div class="dg-combat-col dg-combat-col-mod"></div>
+
+        <div class="dg-combat-col dg-combat-col-flags">
+          <div style="display:flex; gap:4px; align-items:center;">
+            <input id="dg-manual-notes" type="text" placeholder="Notes" />
+            <button id="dg-manual-add" class="dg-btn-small">ADD</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rows will populate here -->
+      <ul id="dg-combat-list" class="dg-combat-list"></ul>
+    </div>
+  </div>
+</div>

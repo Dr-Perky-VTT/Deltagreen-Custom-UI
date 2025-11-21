@@ -1,0 +1,158 @@
+<!-- Delta Green CRT UI Root -->
+<div id="dg-crt-container">
+  <!-- Whole screen as vertical flex -->
+  <div id="dg-crt-screen" style="display: flex; flex-direction: column; height: 100%;">
+
+    <!-- MENU BAR + STATUS BAR -->
+    <div id="dg-crt-menu" style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+      <!-- Primary views -->
+      <div class="dg-menu-item" data-view="system">SYSTEM</div>
+      <div class="dg-menu-item" data-view="access">ACCESS</div>
+      <div class="dg-menu-item" data-view="mail">MAIL</div>
+      <div class="dg-menu-item" data-view="psyche">PSYCH-EVAL</div>
+      <div class="dg-menu-item" data-view="rolls">SKILLS</div>
+      <div class="dg-menu-item" data-view="inventory">INVENTORY</div>
+      <div class="dg-menu-item" data-view="banking">BANK</div>
+      <div class="dg-menu-item" data-view="combat">COMBAT</div>
+      <div class="dg-menu-item" data-view="records">RECORD</div>
+      <div class="dg-menu-item" data-view="journal" id="dg-journal-button">JOURNAL</div>
+      <div class="dg-menu-item" data-view="scene">SATELLITE</div>
+      <div class="dg-menu-item" data-view="web" id="dg-web-button" style="display: none;">WEB</div>
+      <div class="dg-menu-item" data-view="sound">SOUND</div>
+      <div class="dg-menu-item" data-view="settings" id="dg-settings-button">SETTINGS</div>
+
+      <!-- STATUS BAR (right side) -->
+      <div id="dg-crt-status-bar">
+        <div id="dg-status-agent">AGENT: NONE</div>
+        <div id="dg-status-lines">
+          <span id="dg-status-hp">HP: N/A</span>
+          <span id="dg-status-wp">WP: N/A</span>
+          <span id="dg-status-san">SAN: N/A</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div id="dg-crt-content" style="flex: 1 1 auto; overflow: hidden;">
+      <div id="dg-main-panel">
+        <!-- SYSTEM view (default) -->
+        <div id="dg-view-system" class="dg-view active">
+          <div class="dg-section">
+            <div class="dg-section-title">QUICK ACCESS</div>
+            <div class="dg-agent-info">
+              <div class="dg-agent-label">AGENT:</div>
+              <div class="dg-agent-name" id="dg-current-agent-name">Loading...</div>
+            </div>
+            <button class="dg-button" id="dg-view-agent-sheet">VIEW AGENT FILE</button>
+          </div>
+
+          <div class="dg-section">
+            <div class="dg-section-title">LAST RECORD ENTRIES</div>
+            <ul class="dg-results-list" id="dg-last-entries-list">
+              <li class="dg-result-item dg-no-entries">No recent entries found</li>
+            </ul>
+          </div>
+
+          <div class="dg-section">
+            <div class="dg-section-title">LAST JOURNAL ENTRIES</div>
+            <ul class="dg-results-list" id="dg-last-journals-list">
+              <li class="dg-result-item dg-no-entries">NO RECENT JOURNAL ENTRIES</li>
+            </ul>
+          </div>
+
+          <button id="dg-theme-cycle-btn" class="dg-button">
+            CYCLE CRT THEME
+          </button>
+
+          <div class="dg-form-group">
+            <label for="dg-font-select" class="dg-form-label">
+              CRT FONT
+            </label>
+            <select id="dg-font-select" class="dg-form-input">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- ACCESS view -->
+        <div id="dg-view-access" class="dg-view">
+          <div class="dg-section">
+            <div class="dg-section-title">AGENT ACCESS</div>
+            <ul class="dg-results-list" id="dg-players-list">
+              <!-- Player list generated dynamically -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- RECORDS view (loaded from records-view.html) -->
+        <div id="dg-view-records" class="dg-view">
+          <!-- RecordsManager injects content here -->
+        </div>
+  <div id="dg-view-combat" class="dg-view"></div> 
+        <!-- INVENTORY view (loaded from inventory-view.html) -->
+        <div id="dg-view-inventory" class="dg-view">
+          <!-- InventoryManager injects content here -->
+        </div>
+
+        <!-- MAIL view (loaded from mail-view.html) -->
+        <div id="dg-view-mail" class="dg-view">
+          <!-- MailSystem injects content here -->
+        </div>
+
+        <!-- PSYCHE view (loaded from psyche-view.html) -->
+        <div id="dg-view-psyche" class="dg-view">
+          <!-- PsycheManager injects the psyche panel here -->
+        </div>
+
+        <!-- JOURNAL view (loaded from journal-view.html) -->
+        <div id="dg-view-journal" class="dg-view">
+          <!-- JournalManager injects content here -->
+        </div>
+  
+        <!-- SCENE view (loaded from scene-view.html) -->
+        <div id="dg-view-scene" class="dg-view">
+          <!-- Scene / satellite view injected here -->
+        </div>
+
+        <!-- ROLLS view (loaded from rolls-view.html) -->
+        <div id="dg-view-rolls" class="dg-view">
+          <!-- RollsManager injects skill / roll UI here -->
+        </div>
+
+        <!-- WEB view (loaded from web-view.html) -->
+        <div id="dg-view-web" class="dg-view">
+          <!-- Optional web tools UI -->
+        </div>
+
+        <!-- BANK view -->
+        <div id="dg-view-banking" class="dg-view">
+          <!-- Banking / expenses UI (optional) -->
+        </div>
+
+        <!-- SOUND view -->
+        <div id="dg-view-sound" class="dg-view">
+          <!-- Sound / music controls UI (optional) -->
+        </div>
+
+
+      </div><!-- /#dg-main-panel -->
+    </div><!-- /#dg-crt-content -->
+  </div><!-- /#dg-crt-screen -->
+</div><!-- /#dg-crt-container -->
+
+<!-- Login button / overlay is injected by JS elsewhere -->
+
+<!-- JOURNAL POPUP WINDOW (outside main CRT for z-index) -->
+<div id="dg-journal-window" style="display:none;">
+  <div id="dg-journal-window-header" class="dg-popup-header">
+    <span id="dg-journal-window-title">JOURNAL ENTRY</span>
+    <button id="dg-journal-close" class="dg-popup-close">X</button>
+  </div>
+  <div id="dg-journal-window-body" class="dg-popup-body">
+    <!-- Journal content gets injected here by JournalManager.openPageInCrt -->
+  </div>
+  <div id="dg-journal-window-footer" class="dg-popup-footer">
+    <button id="dg-journal-edit" class="dg-button">EDIT IN FOUNDRY</button>
+  </div>
+</div>
+ <div id="dg-crt-scanlines"></div>

@@ -1,0 +1,46 @@
+<!-- inventory-view.html -->
+<div id="dg-inventory-root">
+  <div class="dg-section">
+    <div class="dg-section-title">
+      INVENTORY
+      <span id="dg-inventory-actor-name" class="dg-mail-actor-name">
+        LOGGED IN: NO AGENT SELECTED
+      </span>
+    </div>
+
+    <!-- New flex layout -->
+    <div class="dg-inventory-layout">
+      <!-- LEFT: EQUIPPED COLUMN -->
+      <div class="dg-inventory-column dg-inventory-left">
+        <div class="dg-section-subtitle">EQUIPPED</div>
+        <ul class="dg-results-list" id="dg-inventory-equipped">
+          <li class="dg-result-item dg-no-entries">NO EQUIPPED ITEMS</li>
+        </ul>
+
+      </div>
+
+      <!-- RIGHT: WEAPONS + GEAR STACKED -->
+      <div class="dg-inventory-column dg-inventory-right">
+        <div class="dg-section-subbox">
+          <div class="dg-section-subtitle">WEAPONS</div>
+          <ul class="dg-results-list" id="dg-inventory-weapons">
+            <li class="dg-result-item dg-no-entries">NO WEAPONS</li>
+          </ul>
+        </div>
+
+        <div class="dg-section-subbox">
+          <div class="dg-section-subtitle">GEAR/OTHER</div>
+          <ul class="dg-results-list" id="dg-inventory-gear">
+            <li class="dg-result-item dg-no-entries">NO GEAR</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+     <div class="dg-psyche-actions-row">
+     <button id="dg-inventory-new-weapon" class="dg-button">+ NEW WEAPON</button>
+     <button id="dg-inventory-new-gear" class="dg-button">+ NEW GEAR/OTHER</BUTTON>
+	 <button id="dg-inventory-price-catalog" class="dg-button">PRICE CATALOG</button>
+    </div>
