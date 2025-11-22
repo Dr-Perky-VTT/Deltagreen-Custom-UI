@@ -199,9 +199,9 @@ A focused rolling and stats panel.
   - Used by the next roll, or
   - Reset using the **0** button.
 
-### Skill Improvements
+### Apply lessons from failures
 
-- Rolls that qualify for improvement are tracked.
+- Rolls that qualify for improvement are tracked with ☣️.
 - Can be resolved later during downtime.
 
 ### Roll View
