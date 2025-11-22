@@ -39,7 +39,7 @@ If a player’s skills are missing when the UI opens:
 
 - **Mail tab player names**  
   In the **Mail** tab, players currently only see **their own assigned character name** in the header, not other players.  
-  This is a known bug and is being worked on.
+  This is a known bug and is being worked on. [believed to be fixed at the moment let me know if there is still any problems]
 
 ---
 
