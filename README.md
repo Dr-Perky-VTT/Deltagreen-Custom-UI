@@ -75,6 +75,8 @@ A quick-access hub for frequently used items.
 
 - **CRT Theme Cycling**  
   Cycle between **five preset CRT color themes**.
+- **CRT Font Dropdown
+  Choose between a variety of classic computer fonts from https://int10h.org/oldschool-pc-fonts
 
 ---
 
