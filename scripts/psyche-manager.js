@@ -1,3 +1,5 @@
+import { HomeSceneManager, HOME_PURSUIT_IDS } from "./home-scene-manager.js";
+
 // psyche-manager.js
 
 // ---------------------------------------------------------------------------
@@ -151,6 +153,12 @@ export class PsycheManager {
       ev.preventDefault();
       ev.stopPropagation();
       await PsycheManager.runRepressInsanityMacro();
+    });
+    // HOME SCENE button
+    $(document).on("click", "#dg-psyche-home-scene", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      await PsycheManager.runHomeSceneDialog();
     });
 
     // Adaptation checkboxes
@@ -306,7 +314,6 @@ export class PsycheManager {
     // ---- CURED FLAG ----
     const isCured = !!sys.disorderCured;
 
-    // You can change the text/format here if you want, e.g. "[REMISSION]" etc.
     const curedTag = isCured ? " [CURED]" : "";
 
     return `${disorderName}${curedTag}${source}`;
@@ -1138,7 +1145,7 @@ export class PsycheManager {
           title: `Repress Insanity – ${displayName}`,
           content: `
             <div style="display:flex;flex-direction:column;gap:8px;">
-              <p style="font-size:13px;opacity:0.95;">
+              <p style="font-size:13px;opacity:0.95%;">
                 Spend <b>1D4 WP</b> to lean on a Bond. If you have at least 1 WP left after spending,
                 reduce that Bond by the same amount and you may roll a SAN test to repress the episode.
               </p>
@@ -1468,8 +1475,7 @@ export class PsycheManager {
                   html.find('[name="sanType"]').val() || "other"
                 ).trim();
                 const markAdaptation = html
-                  .find('[name="markAdaptation"]')
-                  .is(":checked");
+                  .find('[name="markAdaptation"]').is(":checked");
 
                 resolve({
                   success,
@@ -1630,5 +1636,798 @@ export class PsycheManager {
       console.error("Delta Green UI | SAN macro error:", err);
       ui.notifications.error("Error running SAN check.");
     }
+  }
+
+  /* ----------------------------------------------------------------------- */
+  /*  HOME SCENE / PERSONAL PURSUITS                                        */
+  /* ----------------------------------------------------------------------- */
+
+  static _getShortAgentName(rawName) {
+    if (!rawName || typeof rawName !== "string") return "UNKNOWN";
+    const parts = rawName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 4) return `${parts[2]} ${parts[3]}`;
+    if (parts.length === 3) return `${parts[1]} ${parts[2]}`;
+    if (parts.length === 2) return `${parts[0]} ${parts[1]}`;
+    return parts[0];
+  }
+
+  static async runHomeSceneDialog() {
+    const actor = this._getCurrentActor();
+    if (!actor) {
+      ui.notifications.warn("Select an Agent token or have an assigned character.");
+      return;
+    }
+
+    const rawName = (actor.name || "UNKNOWN").trim();
+    const displayName = this._getShortAgentName(rawName);
+
+    const san = Number(foundry.utils.getProperty(actor, "system.sanity.value") ?? 0);
+    const pow = Number(
+      foundry.utils.getProperty(actor, "system.statistics.pow.value") ?? 0
+    );
+    const cha = Number(
+      foundry.utils.getProperty(actor, "system.statistics.cha.value") ?? 0
+    );
+
+    const items = actor.items?.contents || actor.items || [];
+    const bonds = items.filter((i) => (i.type || "").toLowerCase() === "bond");
+
+    const skills = this._collectSkillChoices(actor);
+    const stats = this._collectStatChoices(actor);
+    const improveChoices = this._collectImproveChoices(actor);
+
+    // ---------- STEP 1: choose the pursuit ----------
+
+    const pursuitOptions = [
+      [HOME_PURSUIT_IDS.FULFILL_RESPONSIBILITIES, "Fulfill responsibilities"],
+      [HOME_PURSUIT_IDS.BACK_TO_NATURE, "Back to nature"],
+      [HOME_PURSUIT_IDS.ESTABLISH_NEW_BOND, "Establish a new Bond"],
+      [HOME_PURSUIT_IDS.THERAPY_TRUTHFUL, "Therapy (sharing truthfully)"],
+      [HOME_PURSUIT_IDS.THERAPY_NOT_TRUTHFUL, "Therapy (not sharing truthfully)"],
+      [HOME_PURSUIT_IDS.IMPROVE_SKILLS_OR_STATS, "Improve skills or stats"],
+      [HOME_PURSUIT_IDS.INDULGE_MOTIVATION, "Indulge a personal motivation"],
+      [HOME_PURSUIT_IDS.SPECIAL_TRAINING, "Special training"],
+      [HOME_PURSUIT_IDS.STAY_ON_THE_CASE, "Stay on the case"],
+      [HOME_PURSUIT_IDS.STUDY_UNNATURAL, "Study the unnatural"]
+    ];
+
+    const pursuitSelectHtml = pursuitOptions
+      .map(([id, label]) => `<option value="${id}">${label}</option>`)
+      .join("");
+
+    const step1Data = await new Promise((resolve) => {
+      new Dialog({
+        title: `Home Scene – ${displayName}`,
+        content: `
+          <form class="dg-home-form">
+            <p style="font-size:11px;opacity:0.8;">
+              Choose this Agent's personal pursuit for this downtime.
+            </p>
+            <div class="form-group">
+              <label>PERSONAL PURSUIT</label>
+              <select name="pursuit" required>
+                ${pursuitSelectHtml}
+              </select>
+            </div>
+          </form>
+        `,
+        buttons: {
+          next: {
+            label: "Next",
+            callback: (html) => {
+              const val = String(
+                html.find('[name="pursuit"]').val() || ""
+              ).trim();
+              resolve({ pursuit: val || null });
+            }
+          },
+          cancel: {
+            label: "Cancel",
+            callback: () => resolve(null)
+          }
+        },
+        default: "next"
+      }).render(true);
+    });
+
+    if (!step1Data || !step1Data.pursuit) return;
+
+    const pursuit = step1Data.pursuit;
+    const meta = this._getPursuitMeta(pursuit);
+
+    const bondOptionsHtml = bonds
+      .map((b) => {
+        const score = Number(b.system?.score ?? 0);
+        return `<option value="${b.id}">${b.name || "UNNAMED BOND"} (${score})</option>`;
+      })
+      .join("");
+
+    const improveOptionsHtml = improveChoices
+      .map((s) => `<option value="${s.id}">${s.label}</option>`)
+      .join("");
+
+    // ---------- STEP 2: show only relevant fields for that pursuit ----------
+
+    const fields = [];
+
+    // Primary Bond (Fulfill responsibilities)
+    if (meta.needsPrimaryBond) {
+      fields.push(`
+        <div class="form-group">
+          <label>PRIMARY BOND</label>
+          <select name="primaryBond">
+            <option value="">None / apply manually</option>
+            ${bondOptionsHtml}
+          </select>
+          <p class="hint">${meta.primaryHint || ""}</p>
+        </div>
+      `);
+    }
+
+    // Cost Bond (most pursuits)
+    if (meta.needsCostBond) {
+      fields.push(`
+        <div class="form-group">
+          <label>COST BOND (pays the –1 / –1D4, etc.)</label>
+          <select name="costBond">
+            <option value="">None / decide in fiction</option>
+            ${bondOptionsHtml}
+          </select>
+          <p class="hint">${meta.costHint || ""}</p>
+        </div>
+      `);
+    }
+
+    // Therapist Bond
+    if (meta.needsTherapistBond) {
+      fields.push(`
+        <div class="form-group">
+          <label>THERAPIST BOND</label>
+          <select name="therapistBond">
+            <option value="">None / create or adjust on critical</option>
+            ${bondOptionsHtml}
+          </select>
+        </div>
+      `);
+    }
+
+    // Combined skill/stat targets: up to 2 total
+    if (meta.improveSlots && meta.improveSlots > 0) {
+      fields.push(`
+        <div class="form-group">
+          <label>IMPROVEMENT TARGET (A)</label>
+          <select name="improveA">
+            <option value="">None / N/A</option>
+            ${improveOptionsHtml}
+          </select>
+          <p class="hint">
+            Choose a skill (RAW home-scene improvement) or a core stat (flat +1, no roll).
+          </p>
+        </div>
+      `);
+
+      if (meta.improveSlots > 1) {
+        fields.push(`
+          <div class="form-group">
+            <label>IMPROVEMENT TARGET (B)</label>
+            <select name="improveB">
+              <option value="">None / N/A</option>
+              ${improveOptionsHtml}
+            </select>
+            <p class="hint">
+              You may pick a second skill or stat. Total improvement targets cannot exceed two.
+            </p>
+          </div>
+        `);
+      }
+    }
+
+    // Roll target override, if applicable
+    if (meta.allowRollTarget) {
+      fields.push(`
+        <div class="form-group">
+          <label>${meta.rollTargetLabel || "ROLL TARGET OVERRIDE (optional)"} </label>
+          <input type="number" name="rollTarget" min="1" max="100"
+                 placeholder="${meta.rollTargetPlaceholder || "Leave blank for default"}">
+          <p class="hint">${meta.rollTargetHint || ""}</p>
+        </div>
+      `);
+    }
+
+    const step2Content = `
+      <form class="dg-home-form">
+        <p style="font-size:11px;opacity:0.8;margin-bottom:8px;">
+          <b>${meta.label}</b><br/>
+          ${meta.description || ""}
+        </p>
+        ${fields.join("") || `
+          <p style="font-size:11px;opacity:0.8;">
+            This pursuit has no mechanical choices here; resolve it in roleplay and apply notes from the log.
+          </p>
+        `}
+      </form>
+    `;
+
+    const step2Data = await new Promise((resolve) => {
+      new Dialog({
+        title: `Home Scene – ${displayName} (${meta.label})`,
+        content: step2Content,
+        buttons: {
+          run: {
+            label: "Run Home Scene",
+            callback: (html) => {
+              const $form = html.find(".dg-home-form");
+              const primaryBondId = String(
+                $form.find('[name="primaryBond"]').val() || ""
+              ).trim();
+              const costBondId = String(
+                $form.find('[name="costBond"]').val() || ""
+              ).trim();
+              const therapistBondId = String(
+                $form.find('[name="therapistBond"]').val() || ""
+              ).trim();
+              const improveAId = String(
+                $form.find('[name="improveA"]').val() || ""
+              ).trim();
+              const improveBId = String(
+                $form.find('[name="improveB"]').val() || ""
+              ).trim();
+              const rollTargetRaw = String(
+                $form.find('[name="rollTarget"]').val() || ""
+              ).trim();
+
+              resolve({
+                pursuit,
+                primaryBondId: primaryBondId || null,
+                costBondId: costBondId || null,
+                therapistBondId: therapistBondId || null,
+                improveAId: improveAId || null,
+                improveBId: improveBId || null,
+                rollTargetOverride:
+                  rollTargetRaw === "" ? null : Number(rollTargetRaw)
+              });
+            }
+          },
+          cancel: {
+            label: "Cancel",
+            callback: () => resolve(null)
+          }
+        },
+        default: "run"
+      }).render(true);
+    });
+
+    if (!step2Data) return;
+
+    await this._applyHomeSceneResult(actor, {
+      san,
+      pow,
+      cha,
+      bonds,
+      skills,
+      stats,
+      improveChoices,
+      ...step2Data
+    });
+  }
+
+  static async _applyHomeSceneResult(actor, opts) {
+    const {
+      san,
+      pow,
+      cha,
+      bonds,
+      skills,
+      stats,
+      improveChoices,
+      pursuit,
+      primaryBondId,
+      costBondId,
+      therapistBondId,
+      rollTargetOverride,
+      improveAId,
+      improveBId
+    } = opts;
+
+    const findBond = (id) => bonds.find((b) => b.id === id) || null;
+    const findStatChoice = (key) =>
+      (stats || []).find((s) => s.key === key) || null;
+    const findImproveChoice = (id) =>
+      (improveChoices || []).find((c) => c.id === id) || null;
+
+    const primaryBond = primaryBondId ? findBond(primaryBondId) : null;
+    const costBond = costBondId ? findBond(costBondId) : primaryBond;
+    const therapistBond = therapistBondId ? findBond(therapistBondId) : null;
+
+    const ctx = {
+      san,
+      pow,
+      cha,
+      primaryBondValue: primaryBond?.system?.score ?? null,
+      primaryBondLabel: primaryBond?.name ?? "Bond",
+      costBondValue: costBond?.system?.score ?? null,
+      costBondLabel: costBond?.name ?? "Bond",
+      therapistBondValue: therapistBond?.system?.score ?? null,
+      therapistBondLabel: therapistBond?.name ?? "Therapist",
+      rollTargetOverride
+    };
+
+    // Track stat & skill improvements locally; RAW is handled here
+    let statImproves = [];
+    let skillImproves = [];
+
+    if (pursuit === HOME_PURSUIT_IDS.IMPROVE_SKILLS_OR_STATS) {
+      const targets = [];
+      if (improveAId) {
+        const t = findImproveChoice(improveAId);
+        if (t) targets.push(t);
+      }
+      if (improveBId) {
+        const t = findImproveChoice(improveBId);
+        if (t) targets.push(t);
+      }
+
+      statImproves = [];
+      skillImproves = [];
+
+      for (const t of targets) {
+        if (!t) continue;
+        if (t.kind === "system" || t.kind === "typed") {
+          skillImproves.push(t); // skill improvement = RAW (1d100 > skill then +3d6)
+        } else if (t.kind === "stat") {
+          statImproves.push(t); // stats = flat +1 per pick
+        }
+      }
+    }
+
+    // Let the rules engine do SAN/bond changes and general log text
+    const result = HomeSceneManager.runPursuit(pursuit, ctx);
+
+    // We'll collect system updates here
+    const updates = {};
+    foundry.utils.setProperty(updates, "system.sanity.value", result.sanAfter);
+
+    const itemUpdates = [];
+    const createItems = [];
+
+    // --- BONDS -------------------------------------------------------------
+    if (primaryBond && result.bondsAfter?.primary != null) {
+      itemUpdates.push({
+        _id: primaryBond.id,
+        "system.score": result.bondsAfter.primary
+      });
+    }
+
+    if (costBond && result.bondsAfter?.cost != null && costBond !== primaryBond) {
+      itemUpdates.push({
+        _id: costBond.id,
+        "system.score": result.bondsAfter.cost
+      });
+    }
+
+    if (therapistBond && result.bondsAfter?.therapist != null) {
+      itemUpdates.push({
+        _id: therapistBond.id,
+        "system.score": result.bondsAfter.therapist
+      });
+    }
+
+    if (result.newBondValue != null) {
+      createItems.push({
+        name: result.newBondLabel || "New Bond",
+        type: "bond",
+        system: { score: result.newBondValue }
+      });
+    }
+
+    if (result.newTherapistBondValue != null) {
+      createItems.push({
+        name: result.therapistBondLabel || "Therapist",
+        type: "bond",
+        system: { score: result.newTherapistBondValue }
+      });
+    }
+
+    // --- SKILL IMPROVEMENTS: RAW home-scene improvement -------------------
+    // For each picked skill: roll 1d100 vs current %, and if the roll is > current
+    // then roll 3d6 and add that many points (cap at 99).
+    const skillChangeLogLines = [];
+    if (pursuit === HOME_PURSUIT_IDS.IMPROVE_SKILLS_OR_STATS && skillImproves.length) {
+      const sysSkills = foundry.utils.duplicate(actor.system?.skills || {});
+      const typedSkills = foundry.utils.duplicate(actor.system?.typedSkills || {});
+
+      for (const t of skillImproves) {
+        const key = t.key;
+        if (!key) continue;
+
+        let container = null;
+        let isSystem = false;
+
+        if (t.kind === "system") {
+          container = sysSkills;
+          isSystem = true;
+        } else if (t.kind === "typed") {
+          container = typedSkills;
+        } else {
+          continue;
+        }
+
+        const skillData = container[key];
+        if (!skillData) continue;
+
+        const current = Number(
+          skillData.proficiency ?? skillData.value ?? skillData.base ?? 0
+        );
+
+        // Test roll: must roll ABOVE current skill to improve
+        const testRoll = await new Roll("1d100").evaluate({ async: true });
+        if (game.dice3d) {
+          await game.dice3d.showForRoll(testRoll, game.user, true);
+        }
+        const testTotal = Number(testRoll.total || 0);
+        const label = t.label || key.toUpperCase();
+
+        if (testTotal > current) {
+          // Improvement: RAW 3d6
+          const gainRoll = await new Roll("3d6").evaluate({ async: true });
+          if (game.dice3d) {
+            await game.dice3d.showForRoll(gainRoll, game.user, true);
+          }
+          const delta = Number(gainRoll.total || 0);
+          const newVal = Math.min(99, current + delta);
+
+          skillData.proficiency = newVal;
+
+          skillChangeLogLines.push(
+            `SKILL: ${label} improved by +${delta} (from ${current}% to ${newVal}%) [test roll ${testTotal} > ${current}].`
+          );
+        } else {
+          skillChangeLogLines.push(
+            `SKILL: ${label} does not improve (test roll ${testTotal} ≤ ${current}%).`
+          );
+        }
+      }
+
+      foundry.utils.setProperty(updates, "system.skills", sysSkills);
+      foundry.utils.setProperty(updates, "system.typedSkills", typedSkills);
+    }
+
+    // --- STAT IMPROVEMENT: flat +1 per stat-selection (no roll) ----------
+    const statChangeLogLines = [];
+    if (pursuit === HOME_PURSUIT_IDS.IMPROVE_SKILLS_OR_STATS && statImproves.length) {
+      const statDeltas = {};
+      const statBefore = {};
+
+      for (const t of statImproves) {
+        const key = t.key;
+        if (!key) continue;
+        if (!(key in statDeltas)) {
+          statDeltas[key] = 0;
+          const statPath = `system.statistics.${key}.value`;
+          statBefore[key] = Number(
+            foundry.utils.getProperty(actor, statPath) ?? 0
+          );
+        }
+        statDeltas[key] += 1; // each selection = +1 to that stat
+      }
+
+      for (const [key, delta] of Object.entries(statDeltas)) {
+        const before = statBefore[key];
+        const after = before + delta;
+        const statPath = `system.statistics.${key}.value`;
+        foundry.utils.setProperty(updates, statPath, after);
+
+        const statChoice = findStatChoice(key);
+        const label = statChoice?.label || key.toUpperCase();
+
+        statChangeLogLines.push(
+          `CORE STAT: ${label} +${delta} (from ${before} to ${after}).`
+        );
+      }
+    }
+
+    // --- APPLY EVERYTHING --------------------------------------------------
+    try {
+      await actor.update(updates);
+      if (itemUpdates.length) {
+        await actor.updateEmbeddedDocuments("Item", itemUpdates);
+      }
+      if (createItems.length) {
+        await actor.createEmbeddedDocuments("Item", createItems);
+      }
+    } catch (err) {
+      console.error("Delta Green UI | Error applying Home Scene:", err);
+      ui.notifications.error("Error applying Home Scene changes.");
+      return;
+    }
+
+    const nameRaw = (actor.name || "UNKNOWN").trim();
+    const displayName = this._getShortAgentName(nameRaw);
+
+    let fullLog = result.log || "";
+    if (skillChangeLogLines.length) {
+      fullLog += (fullLog ? "\n" : "") + skillChangeLogLines.join("\n");
+    }
+    if (statChangeLogLines.length) {
+      fullLog += (fullLog ? "\n" : "") + statChangeLogLines.join("\n");
+    }
+
+    const header = `<strong>HOME SCENE – ${displayName}</strong>`;
+    const body = `<pre style="font-size:11px;line-height:1.2;">${fullLog}</pre>`;
+
+    await ChatMessage.create({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content: `${header}<br>${body}`
+    });
+
+    ui.notifications.info("Home Scene resolved. Check chat log for details.");
+  }
+
+  // ----------------------------------------------------------------------- */
+  //  PURSUIT META (which fields each option needs)                          */
+  // ----------------------------------------------------------------------- */
+
+  static _getPursuitMeta(pursuitId) {
+    const base = {
+      label: "Home Scene",
+      description: "",
+      needsPrimaryBond: false,
+      primaryHint: "",
+      needsCostBond: false,
+      costHint: "",
+      needsTherapistBond: false,
+      // old skill/stat slots are not used anymore; we use improveSlots instead
+      skillSlots: 0,
+      statSlots: 0,
+      improveSlots: 0, // total number of improvement targets (skills or stats)
+      allowRollTarget: false,
+      rollTargetLabel: "",
+      rollTargetPlaceholder: "",
+      rollTargetHint: ""
+    };
+
+    switch (pursuitId) {
+      case HOME_PURSUIT_IDS.FULFILL_RESPONSIBILITIES:
+        return {
+          ...base,
+          label: "Fulfill responsibilities",
+          description:
+            "You do your best to meet your obligations to work, family, and community.",
+          needsPrimaryBond: true,
+          primaryHint:
+            "Choose the Bond that benefits if you manage to hold things together."
+        };
+
+      case HOME_PURSUIT_IDS.BACK_TO_NATURE:
+        return {
+          ...base,
+          label: "Back to nature",
+          description:
+            "You retreat from everything and everyone to recover in isolation or in the wilderness.",
+          needsCostBond: true,
+          costHint:
+            "Choose the Bond that suffers from your time away (usually a family or close contact)."
+        };
+
+      case HOME_PURSUIT_IDS.ESTABLISH_NEW_BOND:
+        return {
+          ...base,
+          label: "Establish a new Bond",
+          description:
+            "You invest time in a new relationship. If successful, you gain a new Bond at ½ CHA.",
+          needsCostBond: true,
+          costHint:
+            "Choose a pre-existing non-DG Bond that loses 1 point due to neglect.",
+          allowRollTarget: true,
+          rollTargetLabel: "Therapist / CHA×5 target (optional override)",
+          rollTargetPlaceholder: "Leave blank to use CHA×5"
+        };
+
+      case HOME_PURSUIT_IDS.THERAPY_TRUTHFUL:
+        return {
+          ...base,
+          label: "Therapy (sharing truthfully)",
+          description:
+            "You describe the truth to a therapist, risking disbelief, investigation, or worse.",
+          needsCostBond: true,
+          costHint:
+            "Choose a non-DG Bond that loses 1 point due to the time and focus spent in therapy.",
+          needsTherapistBond: true,
+          allowRollTarget: true,
+          rollTargetLabel: "Therapist’s Psychotherapy skill (optional override)",
+          rollTargetPlaceholder: "Default 50% if left blank",
+          rollTargetHint:
+            "Use the therapist’s actual Psychotherapy % if known; otherwise, leave at default."
+        };
+
+      case HOME_PURSUIT_IDS.THERAPY_NOT_TRUTHFUL:
+        return {
+          ...base,
+          label: "Therapy (not sharing truthfully)",
+          description:
+            "You attend therapy but keep the worst truths to yourself, working around the edges.",
+          needsCostBond: true,
+          costHint:
+            "Choose a non-DG Bond that loses 1 point due to the time and focus spent in therapy.",
+          needsTherapistBond: true,
+          allowRollTarget: true,
+          rollTargetLabel: "Therapist’s Psychotherapy skill (optional override)",
+          rollTargetPlaceholder: "Default 50% if left blank",
+          rollTargetHint:
+            "Use the therapist’s actual Psychotherapy % if known; otherwise, leave at default."
+        };
+
+      case HOME_PURSUIT_IDS.IMPROVE_SKILLS_OR_STATS:
+        return {
+          ...base,
+          label: "Improve skills or stats",
+          description:
+            "You train, study, or condition yourself. You may choose up to two targets. For each skill, roll to improve per RAW (improve on failure by 3d6). For each stat, gain +1 (no roll).",
+          needsCostBond: true,
+          costHint:
+            "Choose the Bond that pays for your downtime training (1 point per the book / Handler judgment).",
+          improveSlots: 2 // exactly two options: any mix of skills/stats
+        };
+
+      case HOME_PURSUIT_IDS.INDULGE_MOTIVATION:
+        return {
+          ...base,
+          label: "Indulge a personal motivation",
+          description:
+            "You throw yourself into one of your core motivations. It may heal you—or cost you.",
+          needsCostBond: true,
+          costHint:
+            "Choose a non-DG Bond that may lose 1 point if SAN improves (neglect while indulging)."
+        };
+
+      case HOME_PURSUIT_IDS.SPECIAL_TRAINING:
+        return {
+          ...base,
+          label: "Special training",
+          description:
+            "You receive formal training or unique instruction. The Handler decides the exact benefit.",
+          needsCostBond: true,
+          costHint:
+            "Choose a non-DG Bond that loses 1 point to represent the time/effort invested."
+        };
+
+      case HOME_PURSUIT_IDS.STAY_ON_THE_CASE:
+        return {
+          ...base,
+          label: "Stay on the case",
+          description:
+            "You obsess over the investigation instead of truly going home. This can uncover new leads or dangerously wrong conclusions.",
+          needsCostBond: true,
+          costHint:
+            "Choose a non-DG Bond that loses 1 point due to your neglect while obsessed with the case.",
+          allowRollTarget: true,
+          rollTargetLabel:
+            "Criminology or Occult % (secret roll, optional override)",
+          rollTargetPlaceholder: "Default 50% if left blank",
+          rollTargetHint:
+            "Use the Agent’s relevant skill if known. Handler may roll in secret."
+        };
+
+      case HOME_PURSUIT_IDS.STUDY_UNNATURAL:
+        return {
+          ...base,
+          label: "Study the unnatural",
+          description:
+            "You dig deeper into unnatural lore, artifacts, or entities. The Handler will adjudicate SAN loss and Unnatural gains.",
+          needsCostBond: true,
+          costHint:
+            "Choose a non-DG Bond that loses 1D4 points from the time spent obsessing over the unnatural."
+        };
+
+      default:
+        return base;
+    }
+  }
+
+  // Collect available skills for drop-downs (system.skills + typedSkills)
+  static _collectSkillChoices(actor) {
+    const choices = [];
+
+    // 1) Base skills: system.skills.<key>.proficiency
+    const sysSkills = actor.system?.skills || {};
+    for (const [key, data] of Object.entries(sysSkills)) {
+      const i18nKey = `DG.Skills.${key}`;
+      const baseLabel =
+        (game?.i18n?.localize?.(i18nKey) || data.label || data.name || key.toUpperCase());
+      const value = Number(
+        data.proficiency ?? data.value ?? data.base ?? 0
+      );
+
+      choices.push({
+        id: `sys:${key}`,
+        label: `${baseLabel} (${value}%)`,
+        kind: "system",
+        key,
+        value
+      });
+    }
+
+    // 2) Typed skills: system.typedSkills.<key>.proficiency
+    const typedSkills = actor.system?.typedSkills || {};
+    for (const [key, data] of Object.entries(typedSkills)) {
+      const groupKey = data.group
+        ? `DG.TypeSkills.${data.group.replace(/\s+/g, "")}`
+        : "";
+      const groupLabel =
+        (groupKey && game?.i18n?.localize?.(groupKey)) ||
+        data.group ||
+        "";
+      const baseLabel = data.label || key;
+      const fullLabel = groupLabel ? `${groupLabel} (${baseLabel})` : baseLabel;
+      const value = Number(data.proficiency ?? data.value ?? 0);
+
+      choices.push({
+        id: `typed:${key}`,
+        label: `${fullLabel} (${value}%)`,
+        kind: "typed",
+        key,
+        value
+      });
+    }
+
+    choices.sort((a, b) => a.label.localeCompare(b.label));
+    return choices;
+  }
+
+  // Collect available core stats for drop-downs (system.statistics)
+  static _collectStatChoices(actor) {
+    const choices = [];
+    const stats = actor.system?.statistics || {};
+
+    for (const [key, data] of Object.entries(stats)) {
+      const baseLabel =
+        data.label ||
+        data.name ||
+        key.toUpperCase();
+      const value = Number(data.value ?? 0);
+
+      choices.push({
+        id: key,
+        label: `${baseLabel} (${value})`,
+        key,
+        value
+      });
+    }
+
+    choices.sort((a, b) => a.label.localeCompare(b.label));
+    return choices;
+  }
+
+  // Combined list: skills + stats, for the unified improvement dropdowns
+  static _collectImproveChoices(actor) {
+    const combined = [];
+
+    // Skills
+    const skills = this._collectSkillChoices(actor);
+    for (const s of skills) {
+      combined.push({
+        id: s.id,           // e.g., "sys:firearms"
+        label: `SKILL – ${s.label}`,
+        kind: s.kind,       // "system" or "typed"
+        key: s.key,
+        value: s.value
+      });
+    }
+
+    // Stats
+    const stats = this._collectStatChoices(actor);
+    for (const st of stats) {
+      combined.push({
+        id: `stat:${st.key}`,
+        label: `STAT – ${st.label}`,
+        kind: "stat",
+        key: st.key,
+        value: st.value
+      });
+    }
+
+    combined.sort((a, b) => a.label.localeCompare(b.label));
+    return combined;
   }
 }
