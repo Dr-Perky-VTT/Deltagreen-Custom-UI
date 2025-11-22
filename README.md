@@ -30,6 +30,7 @@ If a player’s skills are missing when the UI opens:
 - The UI should then correctly detect their assigned actor and populate skills.
 - By default, it tries to bind to the player’s assigned character, but sometimes Foundry doesn’t pass that through cleanly on first load.
 
+On windows 10/11 effiency mode causes noticable slow-down when saving the record files, check your task manager and try to disable it unfortunately it has to be done everytime you relaunch.
 ---
 
 ## Known Issues
