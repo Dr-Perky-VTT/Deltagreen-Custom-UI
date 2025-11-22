@@ -95,7 +95,7 @@ export class MailSystem {
       try {
         this.loadMessages();
         this.refreshSkillHotbar();
-this.refreshStatButtons();
+        this.refreshStatButtons();
         this.refreshTypedSkillButtons();
         this.refreshModifierButtons();
         this.refreshWeaponHotbar();
@@ -115,7 +115,7 @@ this.refreshStatButtons();
     Hooks.on("controlToken", (token) => {
       try {
         this.refreshSkillHotbar();
-		this.refreshStatButtons();
+        this.refreshStatButtons();
         this.refreshTypedSkillButtons();
         this.refreshWeaponHotbar();
         this.ensureSanButton();
@@ -134,7 +134,7 @@ this.refreshStatButtons();
           this.refreshSkillHotbar();
           this.refreshTypedSkillButtons();
           this.refreshWeaponHotbar();
-		  this.refreshStatButtons();
+          this.refreshStatButtons();
           this.refreshHpWpPanel(actor);
           this._refreshSanButtonStatus(actor);
           this._updateMailHeaderActorName(actor);
@@ -249,7 +249,7 @@ this.refreshStatButtons();
   }
 
   /* ------------------------------------------------------------------------ */
-  /* ACTOR HELPERS                                                            */
+  /* ACTOR + NAME HELPERS                                                     */
   /* ------------------------------------------------------------------------ */
 
   static _getCurrentActor() {
@@ -312,6 +312,101 @@ this.refreshStatButtons();
     return map[uiKey] || uiKey;
   }
 
+  static _getActorDisplayName(actor) {
+    if (!actor) return null;
+    const name = (actor.name || "").toString().trim();
+    if (name) return name;
+    return null;
+  }
+
+  /**
+   * Shorten a raw name to just the "agent name" portion.
+   * Rule:
+   * - If 4+ words: 3rd + 4th (e.g. "AGENT MARION CASE HANDLER M-CELL" → "CASE HANDLER")
+   * - If 3 words: 2nd + 3rd
+   * - If 2 words: both
+   * - If 1 word: that word
+   * Always returns UPPERCASE, or "" if nothing usable.
+   */
+  static _shortenName(rawName) {
+    if (!rawName || typeof rawName !== "string") return "";
+    const parts = rawName.trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+
+    if (parts.length >= 4) return `${parts[2]} ${parts[3]}`.toUpperCase();
+    if (parts.length === 3) return `${parts[1]} ${parts[2]}`.toUpperCase();
+    if (parts.length === 2) return `${parts[0]} ${parts[1]}`.toUpperCase();
+    return parts[0].toUpperCase();
+  }
+
+  /**
+   * Compute the sender label for a ChatMessage.
+   * - Prefer message.speaker.alias (what shows in the regular chat log), shortened by _shortenName
+   * - Then try the speaker's actor (by ID / token), shortened by _shortenName
+   * - Finally fall back to the Foundry user (author), via formatSenderName
+   */
+  static getMessageSender(message) {
+    if (!message) return "UNKNOWN";
+
+    const speaker = message.speaker || {};
+
+    // 1) If the message has an explicit alias (e.g. speaking as an NPC), use shortened alias.
+    if (speaker.alias && typeof speaker.alias === "string") {
+      const shortAlias = this._shortenName(speaker.alias) || speaker.alias;
+      return shortAlias.toUpperCase();
+    }
+
+    // 2) Try to resolve an actor from the speaker.
+    let actor = null;
+
+    if (speaker.actor && game.actors) {
+      actor = game.actors.get(speaker.actor) || null;
+    }
+
+    if (!actor && speaker.token && canvas?.scene) {
+      const tokenDoc = canvas.scene.tokens.get(speaker.token);
+      actor = tokenDoc?.actor || tokenDoc?.object?.actor || null;
+    }
+
+    if (actor) {
+      const fromName = this._shortenName(actor.name || "");
+      if (fromName) return fromName;
+
+      // fall through to flag-based construction below if needed
+      try {
+        const MODULE_ID = DeltaGreenUI.ID;
+        const first =
+          (actor.getFlag && actor.getFlag(MODULE_ID, "firstName")) || "";
+        const middle =
+          (actor.getFlag && actor.getFlag(MODULE_ID, "middleName")) || "";
+        const surname =
+          (actor.getFlag && actor.getFlag(MODULE_ID, "surname")) ||
+          (actor.getFlag && actor.getFlag(MODULE_ID, "reference")) ||
+          "";
+
+        const parts = [first, middle]
+          .map((p) => (p ?? "").toString().trim())
+          .filter(Boolean);
+
+        if (parts.length) return parts.join(" ").toUpperCase();
+        if (surname && first) return `${first} ${surname}`.toUpperCase();
+      } catch (e) {
+        console.warn(
+          "Delta Green UI | MailSystem.getMessageSender flag lookup failed (actor branch)",
+          e
+        );
+      }
+
+      if (actor.name) return actor.name.toUpperCase();
+    }
+
+    // 3) Fallback: use the Foundry User (author / user), via formatSenderName.
+    const user = message.author || message.user;
+    if (user) return this.formatSenderName(user);
+
+    return "UNKNOWN";
+  }
+
   /* ------------------------------------------------------------------------ */
   /* UI HELPERS: SAN BUTTON, HEADER, WEAPONS, HP/WP                           */
   /* ------------------------------------------------------------------------ */
@@ -365,52 +460,6 @@ this.refreshStatButtons();
     // No known flag? Treat as not equipped.
     return false;
   }
-
-  static _getActorDisplayName(actor) {
-    if (!actor) return null;
-    const name = (actor.name || "").toString().trim();
-    if (name) return name;
-    return null;
-  }
-static refreshStatButtons() {
-  const actor = this._getCurrentActor();
-
-  $(".dg-stat-roll-btn, #dg-luck-roll-btn").each((_, el) => {
-    const $btn = $(el);
-
-    // Cache original label once (e.g. "STR")
-    if (!$btn.data("baseLabel")) {
-      $btn.data("baseLabel", ($btn.text() || "").trim());
-    }
-    const baseLabel = $btn.data("baseLabel") || "";
-
-    if (!actor) {
-      $btn.text(baseLabel);
-      return;
-    }
-
-    // Luck is a flat 50% in vanilla DG
-    if ($btn.is("#dg-luck-roll-btn")) {
-      $btn.text(`${baseLabel} 50%`);
-      return;
-    }
-
-    const statKey = $btn.data("stat");
-    if (!statKey) {
-      $btn.text(baseLabel);
-      return;
-    }
-
-    const stat = actor.system?.statistics?.[statKey];
-    if (!stat) {
-      $btn.text(baseLabel);
-      return;
-    }
-
-    const baseTarget = Number(stat.x5 ?? stat.value * 5) || 0;
-    $btn.text(`${baseLabel} ${baseTarget}%`);
-  });
-}
 
   // Color SAN CHECK based on SAN vs Breaking Point
   static _refreshSanButtonStatus(actor = null) {
@@ -478,35 +527,14 @@ static refreshStatButtons() {
   static _updateMailHeaderActorName(actor = null) {
     try {
       const current = actor || this._getCurrentActor();
-
-      // Helper: extract the 3rd and 4th word when possible, with fallbacks
-      const getShortAgentName = (rawName) => {
-        if (!rawName || typeof rawName !== "string") return "UNKNOWN";
-
-        const parts = rawName.trim().split(/\s+/).filter(Boolean);
-
-        if (parts.length >= 4) {
-          // Use 3rd and 4th word
-          return `${parts[2]} ${parts[3]}`;
-        } else if (parts.length === 3) {
-          // Fallback: 2nd + 3rd
-          return `${parts[1]} ${parts[2]}`;
-        } else if (parts.length === 2) {
-          // Fallback: both
-          return `${parts[0]} ${parts[1]}`;
-        }
-
-        return parts[0] || "UNKNOWN";
-      };
-
       const rawName = current?.name || "UNKNOWN";
-      const shortName = current ? getShortAgentName(rawName) : null;
-      const upperName = shortName ? shortName.toUpperCase() : null;
+      const shortName = current ? this._shortenName(rawName) : "";
+      const upperName = shortName || "UNKNOWN";
 
       // Preferred: use dedicated span if present
       const span = document.getElementById("dg-mail-actor-name");
       if (span) {
-        span.textContent = upperName
+        span.textContent = current
           ? `LOGGED IN: ${upperName}`
           : "LOGGED IN: —";
         return;
@@ -525,7 +553,7 @@ static refreshStatButtons() {
       }
 
       const baseTitle = header.dataset.baseTitle;
-      const rightText = upperName ? `LOGGED IN: ${upperName}` : "";
+      const rightText = current ? `LOGGED IN: ${upperName}` : "";
 
       header.innerHTML = `
         <span class="dg-section-title-left">${baseTitle}</span>
@@ -534,6 +562,46 @@ static refreshStatButtons() {
     } catch (err) {
       console.error("Delta Green UI | _updateMailHeaderActorName error:", err);
     }
+  }
+
+  static refreshStatButtons() {
+    const actor = this._getCurrentActor();
+
+    $(".dg-stat-roll-btn, #dg-luck-roll-btn").each((_, el) => {
+      const $btn = $(el);
+
+      // Cache original label once (e.g. "STR")
+      if (!$btn.data("baseLabel")) {
+        $btn.data("baseLabel", ($btn.text() || "").trim());
+      }
+      const baseLabel = $btn.data("baseLabel") || "";
+
+      if (!actor) {
+        $btn.text(baseLabel);
+        return;
+      }
+
+      // Luck is a flat 50% in vanilla DG
+      if ($btn.is("#dg-luck-roll-btn")) {
+        $btn.text(`${baseLabel} 50%`);
+        return;
+      }
+
+      const statKey = $btn.data("stat");
+      if (!statKey) {
+        $btn.text(baseLabel);
+        return;
+      }
+
+      const stat = actor.system?.statistics?.[statKey];
+      if (!stat) {
+        $btn.text(baseLabel);
+        return;
+      }
+
+      const baseTarget = Number(stat.x5 ?? stat.value * 5) || 0;
+      $btn.text(`${baseLabel} ${baseTarget}%`);
+    });
   }
 
   // adjust HP by +1 / -1 from the buttons
@@ -553,7 +621,8 @@ static refreshStatButtons() {
       const curRaw = Number(foundry.utils.getProperty(actor, hpPath) ?? 0);
       const maxRaw = Number(
         foundry.utils.getProperty(actor, hpMaxPath) ??
-          foundry.utils.getProperty(actor, hpPath) ?? 0
+          foundry.utils.getProperty(actor, hpPath) ??
+          0
       );
 
       const cur = Number.isFinite(curRaw) ? curRaw : 0;
@@ -589,7 +658,8 @@ static refreshStatButtons() {
       const curRaw = Number(foundry.utils.getProperty(actor, wpPath) ?? 0);
       const maxRaw = Number(
         foundry.utils.getProperty(actor, wpMaxPath) ??
-          foundry.utils.getProperty(actor, wpPath) ?? 0
+          foundry.utils.getProperty(actor, wpPath) ??
+          0
       );
 
       const cur = Number.isFinite(curRaw) ? curRaw : 0;
@@ -702,97 +772,97 @@ static refreshStatButtons() {
   }
 
   // UPDATED: show skill % on buttons, and hide untrained (<10%) base skills
-static refreshSkillHotbar() {
-  const actor = this._getCurrentActor();
-  const skills = actor?.system?.skills || {};
+  static refreshSkillHotbar() {
+    const actor = this._getCurrentActor();
+    const skills = actor?.system?.skills || {};
 
-  $(".dg-skill-roll-btn")
-    .not(".dg-typed-skill-btn")
-    .each((_, el) => {
-      const $btn = $(el);
-      const uiKey = $btn.data("skill");
+    $(".dg-skill-roll-btn")
+      .not(".dg-typed-skill-btn")
+      .each((_, el) => {
+        const $btn = $(el);
+        const uiKey = $btn.data("skill");
 
-      if (!uiKey || !actor) {
-        $btn.hide();
-        return;
-      }
+        if (!uiKey || !actor) {
+          $btn.hide();
+          return;
+        }
 
-      const systemKey = this._mapSkillKey(uiKey);
-      const skillObj = skills[systemKey];
-      const prof = Number(skillObj?.proficiency ?? 0);
+        const systemKey = this._mapSkillKey(uiKey);
+        const skillObj = skills[systemKey];
+        const prof = Number(skillObj?.proficiency ?? 0);
 
-      if (!skillObj || Number.isNaN(prof) || prof < 10) {
-        $btn.hide();
-        return;
-      }
+        if (!skillObj || Number.isNaN(prof) || prof < 10) {
+          $btn.hide();
+          return;
+        }
 
-      const isMarked = !!skillObj.failure; // ☣ if this is true
+        const isMarked = !!skillObj.failure; // ☣ if this is true
 
-      // Cache the base label once so we don't keep appending
-      if (!$btn.data("baseLabel")) {
-        const existing = ($btn.text() || "").toString().trim();
-        const baseLabel =
-          existing ||
-          (
-            game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
-            systemKey
-          ).toString().toUpperCase();
-        $btn.data("baseLabel", baseLabel);
-      }
+        // Cache the base label once so we don't keep appending
+        if (!$btn.data("baseLabel")) {
+          const existing = ($btn.text() || "").toString().trim();
+          const baseLabel =
+            existing ||
+            (
+              game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
+              systemKey
+            ).toString().toUpperCase();
+          $btn.data("baseLabel", baseLabel);
+        }
 
-      const baseLabel = $btn.data("baseLabel");
-      const percentPart = isMarked ? `${prof}% ☣` : `${prof}%`;
-      $btn.text(`${baseLabel} (${percentPart})`);
-      $btn.show();
-    });
-}
+        const baseLabel = $btn.data("baseLabel");
+        const percentPart = isMarked ? `${prof}% ☣` : `${prof}%`;
+        $btn.text(`${baseLabel} (${percentPart})`);
+        $btn.show();
+      });
+  }
 
   // UPDATED: typed skill labels + %
-static refreshTypedSkillButtons() {
-  const actor = this._getCurrentActor();
-  const $skillBar = $(".dg-mail-base-skillbar");
-  if (!$skillBar.length) return;
+  static refreshTypedSkillButtons() {
+    const actor = this._getCurrentActor();
+    const $skillBar = $(".dg-mail-base-skillbar");
+    if (!$skillBar.length) return;
 
-  $skillBar.find(".dg-typed-skill-btn").remove();
-  if (!actor) return;
+    $skillBar.find(".dg-typed-skill-btn").remove();
+    if (!actor) return;
 
-  const typedSkills = actor.system?.typedSkills || {};
-  const entries = Object.entries(typedSkills)
-    .filter(([_, s]) => {
-      const val = Number(s?.proficiency ?? 0);
-      return !Number.isNaN(val) && val > 0;
-    })
-    .sort((a, b) => {
-      const [, A] = a,
-        [, B] = b;
-      const labelA = `${(A.group || "").toUpperCase()} (${(
-        A.label || ""
+    const typedSkills = actor.system?.typedSkills || {};
+    const entries = Object.entries(typedSkills)
+      .filter(([_, s]) => {
+        const val = Number(s?.proficiency ?? 0);
+        return !Number.isNaN(val) && val > 0;
+      })
+      .sort((a, b) => {
+        const [, A] = a,
+          [, B] = b;
+        const labelA = `${(A.group || "").toUpperCase()} (${(
+          A.label || ""
+        ).toUpperCase()})`;
+        const labelB = `${(B.group || "").toUpperCase()} (${(
+          B.label || ""
+        ).toUpperCase()})`;
+        return labelA.localeCompare(labelB);
+      });
+
+    for (const [key, skill] of entries) {
+      const val = Number(skill?.proficiency ?? 0) || 0;
+      const isMarked = !!skill.failure; // ☣ here too
+
+      const baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
+        skill.label || key
       ).toUpperCase()})`;
-      const labelB = `${(B.group || "").toUpperCase()} (${(
-        B.label || ""
-      ).toUpperCase()})`;
-      return labelA.localeCompare(labelB);
-    });
 
-  for (const [key, skill] of entries) {
-    const val = Number(skill?.proficiency ?? 0) || 0;
-    const isMarked = !!skill.failure; // ☣ here too
+      const percentPart = isMarked ? `${val}% ☣` : `${val}%`;
+      const label = `${baseLabel} (${percentPart})`;
 
-    const baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
-      skill.label || key
-    ).toUpperCase()})`;
-
-    const percentPart = isMarked ? `${val}% ☣` : `${val}%`;
-    const label = `${baseLabel} (${percentPart})`;
-
-    const $btn = $(
-      `<button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
-        ${label}
-      </button>`
-    );
-    $skillBar.append($btn);
+      const $btn = $(`
+        <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
+          ${label}
+        </button>
+      `);
+      $skillBar.append($btn);
+    }
   }
-}
 
   static refreshWeaponHotbar() {
     const actor = this._getCurrentActor();
@@ -824,11 +894,11 @@ static refreshTypedSkillButtons() {
 
     for (const w of weapons) {
       const name = w.name || "WEAPON";
-      const btn = $(
-        `<button class="dg-button dg-weapon-btn" data-weapon-id="${w.id}">
+      const btn = $(`
+        <button class="dg-button dg-weapon-btn" data-weapon-id="${w.id}">
           ${name.toUpperCase()}
-        </button>`
-      );
+        </button>
+      `);
       $wrap.append(btn);
     }
   }
@@ -1264,79 +1334,6 @@ static refreshTypedSkillButtons() {
     try {
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-      // Helper: extract the 3rd and 4th word of the name when possible
-      const getShortAgentName = (rawName) => {
-        if (!rawName || typeof rawName !== "string") return "UNKNOWN";
-
-        const parts = rawName.trim().split(/\s+/).filter(Boolean);
-        if (parts.length >= 4) return `${parts[2]} ${parts[3]}`;
-        if (parts.length === 3) return `${parts[1]} ${parts[2]}`;
-        if (parts.length === 2) return `${parts[0]} ${parts[1]}`;
-        return parts[0];
-      };
-
-      // ---------- Helper: tick Violence / Helplessness adaptation incident ----------
-      async function markAdaptationIncident(actor, sanType, displayName) {
-        if (!actor || !["violence", "helplessness"].includes(sanType)) return;
-
-        const sys = actor.system || actor.data?.system || {};
-        const adaptations = sys.sanity?.adaptations?.[sanType] || {};
-
-        const basePath = `system.sanity.adaptations.${sanType}`;
-        const current1 = !!adaptations.incident1;
-        const current2 = !!adaptations.incident2;
-        const current3 = !!adaptations.incident3;
-
-        let pathToSet = null;
-        if (!current1) pathToSet = `${basePath}.incident1`;
-        else if (!current2) pathToSet = `${basePath}.incident2`;
-        else if (!current3) pathToSet = `${basePath}.incident3`;
-
-        // Already fully adapted
-        if (!pathToSet) {
-          ui.notifications?.info?.(`Already fully adapted to ${sanType}.`);
-          return;
-        }
-
-        const beforeCount =
-          (current1 ? 1 : 0) + (current2 ? 1 : 0) + (current3 ? 1 : 0);
-
-        const updates = {};
-        updates[pathToSet] = true;
-
-        await actor.update(updates);
-
-        const nowInc2 = current2 || pathToSet.endsWith("incident2");
-        const nowInc3 = current3 || pathToSet.endsWith("incident3");
-        const afterCount = beforeCount + 1;
-        const fullyAdapted = true && nowInc2 && nowInc3;
-
-        ui.notifications?.info?.(
-          `Marked one ${sanType} SAN loss incident (${afterCount}/3).`
-        );
-
-        if (fullyAdapted) {
-          const adaptUpdates = {};
-          adaptUpdates[`${basePath}.isAdapted`] = true;
-          await actor.update(adaptUpdates).catch(() => {});
-
-          const label =
-            sanType === "violence"
-              ? "ADAPTED TO VIOLENCE"
-              : "ADAPTED TO HELPLESSNESS";
-
-          ui.notifications?.info?.(
-            `${displayName} is now ${label}.`
-          );
-
-          await ChatMessage.create({
-            user: game.user.id,
-            speaker: ChatMessage.getSpeaker({ actor }),
-            content: `<p><b>${displayName}</b> has become <b>${label}</b>.</p>`
-          });
-        }
-      }
-
       // ---------- 1. Get actor ----------
       let actor = this._getCurrentActor();
       if (!actor) {
@@ -1345,7 +1342,7 @@ static refreshTypedSkillButtons() {
       }
 
       const rawName = (actor.name || "UNKNOWN").trim();
-      const displayName = getShortAgentName(rawName);
+      const displayName = this._shortenName(rawName) || "UNKNOWN";
 
       // ---------- 0. Narrative pools ----------
       const SAN_FAILURE_LINES = [
@@ -1464,8 +1461,7 @@ static refreshTypedSkillButtons() {
                   html.find('[name="sanType"]').val() || "other"
                 ).trim();
                 const markAdaptation = html
-                  .find('[name="markAdaptation"]')
-                  .is(":checked");
+                  .find('[name="markAdaptation"]').is(":checked");
 
                 resolve({
                   success,
@@ -1526,6 +1522,68 @@ static refreshTypedSkillButtons() {
 
       if (hasBP) updates[bpHitPath] = newSan <= breakingPoint;
       await actor.update(updates);
+
+      // ---------- Helper: adaptation incident ----------
+      async function markAdaptationIncident(actor, sanType, displayName) {
+        if (!actor || !["violence", "helplessness"].includes(sanType)) return;
+
+        const sys = actor.system || actor.data?.system || {};
+        const adaptations = sys.sanity?.adaptations?.[sanType] || {};
+
+        const basePath = `system.sanity.adaptations.${sanType}`;
+        const current1 = !!adaptations.incident1;
+        const current2 = !!adaptations.incident2;
+        const current3 = !!adaptations.incident3;
+
+        let pathToSet = null;
+        if (!current1) pathToSet = `${basePath}.incident1`;
+        else if (!current2) pathToSet = `${basePath}.incident2`;
+        else if (!current3) pathToSet = `${basePath}.incident3`;
+
+        // Already fully adapted
+        if (!pathToSet) {
+          ui.notifications?.info?.(`Already fully adapted to ${sanType}.`);
+          return;
+        }
+
+        const beforeCount =
+          (current1 ? 1 : 0) + (current2 ? 1 : 0) + (current3 ? 1 : 0);
+
+        const updates = {};
+        updates[pathToSet] = true;
+
+        await actor.update(updates);
+
+        const nowInc2 = current2 || pathToSet.endsWith("incident2");
+        const nowInc3 = current3 || pathToSet.endsWith("incident3");
+        const afterCount = beforeCount + 1;
+        const fullyAdapted = true && nowInc2 && nowInc3;
+
+        ui.notifications?.info?.(
+          `Marked one ${sanType} SAN loss incident (${afterCount}/3).`
+        );
+
+        if (fullyAdapted) {
+          const adaptUpdates = {};
+          adaptUpdates[`${basePath}.isAdapted`] = true;
+          await actor.update(adaptUpdates).catch(() => {});
+
+          const label =
+            sanType === "violence"
+              ? "ADAPTED TO VIOLENCE"
+              : "ADAPTED TO HELPLESSNESS";
+
+          ui.notifications?.info?.(
+            `${displayName} is now ${label}.`
+          );
+
+          await ChatMessage.create({
+            user: game.user.id,
+            speaker: ChatMessage.getSpeaker({ actor }),
+            content: `<p><b>${displayName}</b> has become <b>${label}</b>.</p>`
+          });
+        }
+      }
 
       // ---------- 5a. Adaptation ----------
       if (markAdaptation) {
@@ -1594,7 +1652,7 @@ static refreshTypedSkillButtons() {
         publicText = `
           <p><b>${displayName}</b>: ${bpLine}</p>
           <p><b>BREAKING POINT REACHED.</b></p>
-          <p style="font-size:15px; opacity:0.9;">
+          <p style="font-size:15px; opacity:0.9%;">
             <b>HANDLER / PLAYER NOTE:</b> Assign or discuss a new disorder appropriate to this episode.
           </p>
         `;
@@ -1738,7 +1796,7 @@ static refreshTypedSkillButtons() {
 
     let skillLabel = msg.flavor || "";
     let target =
-      dgFlags.target ??
+      dgFlags.target ?? 
       (dgFlags.baseTarget != null && dgFlags.modifier != null
         ? dgFlags.baseTarget + dgFlags.modifier
         : null);
@@ -1829,8 +1887,8 @@ static refreshTypedSkillButtons() {
 
           return {
             id: msg.id,
-            sender: this.formatSenderName(msg.user),
-            userId: msg.user?.id ?? null,
+            sender: this.getMessageSender(msg),
+            userId: msg.author?.id ?? msg.user?.id ?? null,
             content: isRoll ? this._buildRollContent(msg) : msg.content,
             timestamp: msg.timestamp,
           };
@@ -1849,8 +1907,8 @@ static refreshTypedSkillButtons() {
 
           add.push({
             id: msg.id,
-            sender: this.formatSenderName(msg.user),
-            userId: msg.user?.id ?? null,
+            sender: this.getMessageSender(msg),
+            userId: msg.author?.id ?? msg.user?.id ?? null,
             content: isRoll ? this._buildRollContent(msg) : msg.content,
             timestamp: msg.timestamp,
           });
@@ -1876,24 +1934,12 @@ static refreshTypedSkillButtons() {
 
     if (!user) return "UNKNOWN";
 
-    const getShortAgentName = (rawName) => {
-      if (!rawName || typeof rawName !== "string") return "";
-      const parts = rawName.trim().split(/\s+/).filter(Boolean);
-      if (parts.length >= 4) {
-        return `${parts[2]} ${parts[3]}`.toUpperCase();
-      }
-      if (parts.length === 3) return `${parts[1]} ${parts[2]}`.toUpperCase();
-      if (parts.length === 2) return `${parts[0]} ${parts[1]}`.toUpperCase();
-      if (parts.length === 1) return parts[0].toUpperCase();
-      return "";
-    };
-
     // 1) GM: if a token is selected, talk as THAT actor
     if (user.isGM && canvas?.tokens?.controlled?.length) {
       const token = canvas.tokens.controlled[0];
       const actor = token?.actor;
       if (actor) {
-        const fromName = getShortAgentName(actor.name || "");
+        const fromName = this._shortenName(actor.name || "");
         if (fromName) return fromName;
 
         try {
@@ -1927,7 +1973,7 @@ static refreshTypedSkillButtons() {
     // 2) Non-GM: use assigned character if present
     const actor = user.character;
     if (actor) {
-      const fromName = getShortAgentName(actor.name || "");
+      const fromName = this._shortenName(actor.name || "");
       if (fromName) return fromName;
 
       try {
@@ -2214,8 +2260,8 @@ static refreshTypedSkillButtons() {
 
       this.messages.push({
         id: message.id,
-        sender: this.formatSenderName(message.user),
-        userId: message.user?.id ?? null,
+        sender: this.getMessageSender(message),
+        userId: message.author?.id ?? message.user?.id ?? null,
         content: isRoll ? this._buildRollContent(message) : message.content,
         timestamp: message.timestamp,
       });

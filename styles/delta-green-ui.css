@@ -1531,70 +1531,7 @@ still “vague” but visually obvious */
 /* ========================================================================== */
 /* FLOATING BOTTOM QUICK BAR (SKILLS + WEAPONS) */
 /* ========================================================================== */
-#dg-bottom-bar {
-	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	pointer-events: none;
-	/* only inner bar takes clicks */
-}
-#dg-bottom-bar-inner {
-	max-width: 100%;
-	margin: 0 auto;
-	padding: 4px 8px;
-	box-sizing: border-box;
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	background: rgba(0, 0, 0, 0.85);
-	border-top: 1px solid var(--crt-text);
-	box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.9);
-	pointer-events: auto;
-	/* THIS is clickable */
-}
-#dg-bottom-agent {
-	font-size: 0.7rem;
-	white-space: nowrap;
-	color: var(--crt-highlight);
-	flex: 0 0 auto;
-}
-/* Sections for skills & weapons */
-.dg-bottom-section {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	flex: 1 1 0;
-	min-width: 0;
-}
-.dg-bottom-section-label {
-	font-size: 0.6rem;
-	opacity: 0.75;
-	flex: 0 0 auto;
-}
-.dg-bottom-buttons {
-	display: flex;
-	flex-wrap: nowrap;
-	gap: 4px;
-	overflow-x: auto;
-	max-width: 100%;
-}
-/* Buttons */
-.dg-bottom-btn {
-	flex: 0 0 auto;
-	padding: 2px 6px;
-	border: 1px solid var(--crt-text);
-	background: #000;
-	color: var(--crt-text);
-	font-size: 0.6rem;
-	cursor: pointer;
-	white-space: nowrap;
-}
-.dg-bottom-btn:hover {
-	background: var(--crt-text);
-	color: var(--crt-bg);
-}
-/* Floating bottom hotbar specifically for mail bar layout */
+/* FLOATING BOTTOM HOTBAR (MAIL-SYSTEM SKILLS + WEAPONS) */
 #dg-bottom-hotbar {
 	position: fixed;
 	left: 0;
@@ -1605,25 +1542,42 @@ still “vague” but visually obvious */
 	padding-left: 300px;
 	padding-right: 300px;
 	box-sizing: border-box;
+	
 }
-.dg-bottom-mailbar-inner {
+
+/* Use the *actual* inner ID you output in JS */
+#dg-bottom-hotbar-inner {
 	display: flex;
 	flex-direction: column;
-	/* skills on top, weapons below */
 	gap: 4px;
 	padding: 4px 8px;
-	background: rgba(0, 0, 0, 0.85);
-	border-top: 1px solid var(--Crt-text);
-	/* Prevent content from going under the compass area */
-	max-width: calc(70% - 96px);
+	max-width: calc(95% - 96px);
 	margin: 0 auto;
+	;
 }
-.dg-bottom-skillbar,.dg-bottom-weaponbar {
+
+/* Skill + weapon rows inside the bottom hotbar */
+#dg-bottom-hotbar-inner .dg-mail-skillbar,
+#dg-bottom-hotbar-inner .dg-mail-weaponbar {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 4px;
 	justify-content: center;
 }
+
+/* HERE is where you give this bar its own font size */
+#dg-bottom-hotbar-inner .dg-button {
+	flex: 0 0 auto;
+	padding: 2px 6px;
+	font-size: 1.65vh;      /* smaller than rolls manager */
+	white-space: nowrap;
+}
+
+/* Optional: make the header toggle small too */
+#dg-bottom-skillbar-header #dg-bottom-skill-toggle {
+	font-size: 1.7vh;
+}
+
 /* ========================================================================== */
 /* MINI CHAT / ROLL FEED WINDOW */
 /* ========================================================================== */

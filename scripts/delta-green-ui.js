@@ -21,8 +21,7 @@ import { CombatManager } from "./combat-manager.js";
 // Shared font list so settings UI + CRT dropdown stay in sync
 // ---------------------------------------------------------------------------
 const DG_FONT_CHOICES = [
-  { key: "DG ToshibaTxL2 8x16",    label: "Module Default (DG ToshibaTxL1 8x16)" },
-
+  { key: "DG Cordata PPC-400",    label: "Module Default (Cordata PPC-400)" },
   { key: "DG IBM VGA 9x16-2x",     label: "IBM VGA 9x16-2x" },
   { key: "DG Rainbow100 re 66",    label: "Rainbow100 re 66" },
   { key: "DG Rainbow100 re 132",   label: "Rainbow100 re 132" },
