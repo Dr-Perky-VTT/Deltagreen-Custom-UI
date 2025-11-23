@@ -464,66 +464,80 @@ export class MailSystem {
   }
 
   // Color SAN CHECK based on SAN vs Breaking Point
-  static _refreshSanButtonStatus(actor = null) {
-    try {
-      const current = actor || this._getCurrentActor();
-      const $btn = $("#dg-san-check-btn");
-      if (!current || !$btn.length) return;
+// UPDATED: SAN status respects GM "allowSanNumbers" setting
+static _refreshSanButtonStatus(actor = null) {
+  try {
+    const current = actor || this._getCurrentActor();
+    const $btn = $("#dg-san-check-btn");
+    if (!current || !$btn.length) return;
 
-      const sanCurrent = Number(
-        foundry.utils.getProperty(current, "system.sanity.value") ?? 0
-      );
-      const sanMax = Number(
-        foundry.utils.getProperty(current, "system.sanity.max") ?? 99
-      );
-      const breakingPoint = Number(
-        foundry.utils.getProperty(
-          current,
-          "system.sanity.currentBreakingPoint"
-        )
-      );
+    const sanCurrent = Number(
+      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+    );
+    const sanMax = Number(
+      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
+    );
+    const breakingPoint = Number(
+      foundry.utils.getProperty(
+        current,
+        "system.sanity.currentBreakingPoint"
+      )
+    );
 
-      // Reset classes
-      $btn.removeClass("dg-san-safe dg-san-warn dg-san-bad");
+    // GM-only world setting: can SAN ever show numbers?
+    const allowSanNumbers = game.settings.get(
+      "deltagreen-custom-ui",
+      "allowSanNumbers"
+    );
 
-      // If we don't have sane data, just show unknown
-      if (
-        !Number.isFinite(sanCurrent) ||
-        !Number.isFinite(breakingPoint) ||
-        breakingPoint <= 0
-      ) {
-        $btn.text("SAN — STATUS UNKNOWN");
-        return;
-      }
+    // Reset classes
+    $btn.removeClass("dg-san-safe dg-san-warn dg-san-bad");
 
-      const ratio = sanCurrent / breakingPoint;
-
-      let label;
-      let cls;
-
-      if (ratio >= 1.5) {
-        label = "GROUNDED";
-        cls = "dg-san-safe";
-      } else if (ratio >= 1.1) {
-        label = "STABLE";
-        cls = "dg-san-safe";
-      } else if (ratio >= 0.8) {
-        label = "FRAYED";
-        cls = "dg-san-warn";
-      } else if (ratio >= 0.5) {
-        label = "UNRAVELLING";
-        cls = "dg-san-warn";
-      } else {
-        label = "COMPROMISED";
-        cls = "dg-san-bad";
-      }
-
-      $btn.addClass(cls);
-      $btn.text(`SAN: ${label}`);
-    } catch (err) {
-      console.error("Delta Green UI | _refreshSanButtonStatus error:", err);
+    // If we don't have sane data, just show unknown
+    if (
+      !Number.isFinite(sanCurrent) ||
+      !Number.isFinite(breakingPoint) ||
+      breakingPoint <= 0
+    ) {
+      $btn.text("SAN — STATUS UNKNOWN");
+      return;
     }
+
+    const ratio = sanCurrent / breakingPoint;
+
+    let label;
+    let cls;
+
+    if (ratio >= 1.5) {
+      label = "GROUNDED";
+      cls = "dg-san-safe";
+    } else if (ratio >= 1.1) {
+      label = "STABLE";
+      cls = "dg-san-safe";
+    } else if (ratio >= 0.8) {
+      label = "FRAYED";
+      cls = "dg-san-warn";
+    } else if (ratio >= 0.5) {
+      label = "UNRAVELLING";
+      cls = "dg-san-warn";
+    } else {
+      label = "COMPROMISED";
+      cls = "dg-san-bad";
+    }
+
+    $btn.addClass(cls);
+
+    // If GM allows numbers, prefix the label with current SAN %.
+    // Otherwise we keep it fully vibe-based.
+    if (allowSanNumbers && Number.isFinite(sanCurrent)) {
+      $btn.text(`SAN ${sanCurrent}% — ${label}`);
+    } else {
+      $btn.text(`SAN: ${label}`);
+    }
+  } catch (err) {
+    console.error("Delta Green UI | _refreshSanButtonStatus error:", err);
   }
+}
 
   // Inject "LOGGED IN: Agent X" into the mail header
   static _updateMailHeaderActorName(actor = null) {

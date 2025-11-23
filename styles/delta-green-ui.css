@@ -629,7 +629,6 @@ body.dg-crt-on {
 }
 .dg-form-input,.dg-form-select,.dg-form-textarea {
 	width: 100%;
-	background-color: #111;
 	border: 1px solid var(--crt-text);
 	color: var(--crt-text);
 	padding: 5px;
@@ -641,12 +640,7 @@ body.dg-crt-on {
 .dg-form-input,.dg-form-select,.dg-form-textarea,.dg-form-input:focus,.dg-form-select:focus,.dg-form-textarea:focus,.dg-form-input:active,.dg-form-select:active,.dg-form-textarea:active {
 	color: var(--crt-text) !important;
 }
-.dg-form-input:focus,.dg-form-select:focus,.dg-form-textarea:focus,.dg-form-input:active,.dg-form-select:active,.dg-form-textarea:active {
-	background-color: #000;
-}
-.dg-form-select option {
-	background-color: #000;
-	color: var(--crt-text);
+
 }
 .dg-form-textarea {
 	min-height: 100px;
@@ -2648,3 +2642,116 @@ body.dg-crt-on {
   text-decoration: line-through;
 }
 
+/* Force all dialogs to use dark CRT background, even if Foundry marks them theme-light */
+.app.window-app.dialog.themed.theme-light .window-content {
+  background: #000;
+  color: #00f8ff; /* or your CRT text color */
+}
+
+/* ========================================================================== */
+/*  HEALTH PANEL                                                              */
+/* ========================================================================== */
+
+/* Main wrapper inside the dropdown */
+.dg-health-panel {
+  margin: 8px 10px 10px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--dg-border-color, rgba(0, 255, 0, 0.35));
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.75) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* ========================================================================== */
+/* HEALTH VIEW LAYOUT                                                         */
+/* ========================================================================== */
+
+#dg-health-root .dg-health-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Summary strip: reuse your CRT text sizes */
+#dg-health-root .dg-health-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 6px 8px;
+  border: 1px solid var(--crt-text);
+  background: rgba(0, 0, 0, 0.4);
+  font-size: 0.9rem;
+}
+
+.dg-health-actor-line,
+.dg-health-stat-line {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.dg-health-summary .dg-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+/* Two-column layout, same vibe as inventory / psyche */
+#dg-health-root .dg-health-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+#dg-health-root .dg-health-column {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Inner “box” under each column */
+#dg-health-root .dg-health-section {
+  border: 1px solid var(--crt-text);
+  padding: 6px 8px;
+}
+
+/* Subsections + rows */
+#dg-health-root .dg-subsection {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+#dg-health-root .dg-subtitle {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+/* Button rows align like your other hotbars */
+#dg-health-root .dg-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* Buttons already themed globally via .dg-button rules */
+#dg-health-root .dg-button {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Mobile: stack columns */
+@media (max-width: 768px) {
+  #dg-health-root .dg-health-columns {
+    flex-direction: column;
+  }
+}

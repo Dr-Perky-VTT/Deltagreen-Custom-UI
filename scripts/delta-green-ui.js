@@ -16,7 +16,7 @@ import { ColorThemeManager } from "./color-theme-manager.js";
 import { BankingManager } from "./banking-manager.js";
 import { ExpensesManager } from "./equipment-catalog.js";
 import { CombatManager } from "./combat-manager.js";
-
+import { HealthManager } from "./health-manager.js";
 // ---------------------------------------------------------------------------
 // Shared font list so settings UI + CRT dropdown stay in sync
 // ---------------------------------------------------------------------------
@@ -504,7 +504,9 @@ static updateTopStatusBar() {
           <div class="dg-mail-skillbar dg-mail-modbar">
             <button class="dg-button dg-mod-btn" data-mod="-40">-40</button>
             <button class="dg-button dg-mod-btn" data-mod="-20">-20</button>
+			<button class="dg-button dg-mod-btn" data-mod="-10">-10</button>
             <button class="dg-button dg-mod-btn" data-mod="0">0</button>
+			<button class="dg-button dg-mod-btn" data-mod="10">+10</button>
             <button class="dg-button dg-mod-btn" data-mod="20">+20</button>
             <button class="dg-button dg-mod-btn" data-mod="40">+40</button>
           </div>
@@ -1032,6 +1034,7 @@ static async onReady() {
     PsycheManager.init();
     BankingManager.init();
     CombatManager.init();
+	HealthManager.init(); 
     // NOTE: RollsManager.init() is NOT called here; it self-inits on "ready"
 
     // 7) CRT is always available
@@ -1504,7 +1507,7 @@ static applyScanlineIntensity(value) {
         ["#dg-view-banking",   `modules/${this.ID}/templates/banking-view.html`],
 		["#dg-view-sound",	   `modules/${this.ID}/templates/sound-view.html`],
 		["#dg-view-combat",    `modules/${this.ID}/templates/combat-view.html`],
-      ];
+	    ];
 
       for (const [sel, url] of paths) {
         try {
@@ -1630,7 +1633,11 @@ static applyScanlineIntensity(value) {
         DeltaGreenUI.toggleWebWindow();
     
       }
-
+if (view === "health") {
+  if (HealthManager && typeof HealthManager.refresh === "function") {
+    HealthManager.refresh();
+  }
+}
       // views that live inside the dropdown panel
       const $content = $("#dg-crt-content");
       const $this = $(this);
@@ -1720,7 +1727,30 @@ static applyScanlineIntensity(value) {
       ev.preventDefault();
       DeltaGreenUI.cycleTheme();
     });
+      // HEALTH panel close button: behaves like clicking the active menu item again
+    $(document)
+      .off("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']")
+      .on("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const $active = $(".dg-menu-item.active");
+        if ($active.length) {
+          // triggers the "same view" logic and collapses the dropdown
+          $active.trigger("click");
+        } else {
+          // Fallback: just hide the dropdown
+          DeltaGreenUI.currentView = null;
+          $(".dg-view").removeClass("active");
+          const $content = $("#dg-crt-content");
+          $content
+            .removeClass("dg-open")
+            .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
+        }
+      });
+
   }
+  
 
   /* ------------------------- Dropdown height helper ---------------------- */
 
