@@ -1,8 +1,8 @@
 {
   "id": "deltagreen-custom-ui",
   "title": "Delta Green Custom UI",
-  "description": "A heavily customized Delta Green CRT-style player interface for Foundry VTT. This build adds a dedicated COMBAT view, banking and expenses tools, audio mixer controls, mini roll feed, token D-pad, vague HP/WP/SAN top bar, PC Records integration, Web View overlay, scanline intensity control, and a bottom skill + weapon hotbar driven by actor data, all while keeping the GM’s core Foundry UI visible and only overriding the player-facing interface.",
-  "version": "0.1.0-alpha",
+  "description": "<p>A heavily customized Delta Green CRT-style player interface for Foundry VTT. This build adds a dedicated COMBAT view, banking and expenses tools, audio mixer controls, mini roll feed, token D-pad, vague HP/WP/SAN top bar, PC Records integration, Web View overlay, scanline intensity control, and a bottom skill + weapon hotbar driven by actor data, all while keeping the GM’s core Foundry UI visible and only overriding the player-facing interface.</p>",
+  "version": "0.0.1.ALPHA",
   "compatibility": {
     "minimum": "10",
     "verified": "13",
@@ -11,18 +11,17 @@
   "authors": [
     {
       "name": "Dr. Perky",
-      "url": ""
+      "flags": {}
     },
     {
       "name": "Based on work by Zéphyr-JDR",
-      "url": ""
+      "flags": {}
     }
   ],
   "esmodules": [
     "scripts/delta-green-ui.js"
   ],
   "styles": [
-
     {
       "src": "styles/delta-green-ui.css"
     }
@@ -39,13 +38,6 @@
         "ASSISTANT": "OWNER"
       }
     }
-
-    "styles/delta-green-ui.css"
-
   ],
-  "packs": [],
   "flags": {}
-  "url": "https://github.com/Dr-Perky-VTT/deltagreen-custom-ui",
-  "manifest": "https://raw.githubusercontent.com/Dr-Perky-VTT/deltagreen-custom-ui/main/module.json",
-  "download": "https://github.com/Dr-Perky-VTT/deltagreen-custom-ui/archive/refs/heads/main.zip"
 }
