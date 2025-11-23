@@ -67,41 +67,40 @@ export class RollsManager {
     return null;
   }
 
-static _updateActorHeader(actor = null) {
-  const nameEl = document.getElementById("dg-rolls-actor-name");
-  if (!nameEl) return;
+  static _updateActorHeader(actor = null) {
+    const nameEl = document.getElementById("dg-rolls-actor-name");
+    if (!nameEl) return;
 
-  const current = actor || this._getCurrentActor();
-  if (!current) {
-    nameEl.textContent = "LOGGED IN: NO AGENT SELECTED";
-    return;
-  }
-
-  const getShortAgentName = (rawName) => {
-    if (!rawName || typeof rawName !== "string") return "UNKNOWN";
-
-    const parts = rawName.trim().split(/\s+/).filter(Boolean);
-
-    if (parts.length >= 4) {
-      // Prefer 3rd + 4th
-      return `${parts[2]} ${parts[3]}`;
-    } else if (parts.length === 3) {
-      // Fallback: 2nd + 3rd
-      return `${parts[1]} ${parts[2]}`;
-    } else if (parts.length === 2) {
-      // Fallback: both
-      return `${parts[0]} ${parts[1]}`;
+    const current = actor || this._getCurrentActor();
+    if (!current) {
+      nameEl.textContent = "LOGGED IN: NO AGENT SELECTED";
+      return;
     }
 
-    return parts[0] || "UNKNOWN";
-  };
+    const getShortAgentName = (rawName) => {
+      if (!rawName || typeof rawName !== "string") return "UNKNOWN";
 
-  const rawName = (current.name || "UNKNOWN").trim();
-  const shortName = getShortAgentName(rawName);
+      const parts = rawName.trim().split(/\s+/).filter(Boolean);
 
-  nameEl.textContent = `LOGGED IN: ${shortName.toUpperCase()}`;
-}
+      if (parts.length >= 4) {
+        // Prefer 3rd + 4th
+        return `${parts[2]} ${parts[3]}`;
+      } else if (parts.length === 3) {
+        // Fallback: 2nd + 3rd
+        return `${parts[1]} ${parts[2]}`;
+      } else if (parts.length === 2) {
+        // Fallback: both
+        return `${parts[0]} ${parts[1]}`;
+      }
 
+      return parts[0] || "UNKNOWN";
+    };
+
+    const rawName = (current.name || "UNKNOWN").trim();
+    const shortName = getShortAgentName(rawName);
+
+    nameEl.textContent = `LOGGED IN: ${shortName.toUpperCase()}`;
+  }
 
   static _isRollMessage(message) {
     if (!message) return false;

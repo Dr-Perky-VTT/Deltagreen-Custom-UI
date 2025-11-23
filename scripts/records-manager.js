@@ -61,15 +61,56 @@ export class RecordsManager {
       this.saveRecord();
     });
 
-    // NEW: FULL REPORT button handler (opens the actor's normal sheet)
+    // FULL REPORT button handler (opens the actor's normal sheet)
+    // - Never for NPC / Unnatural.
+    // - Players: only for their own Agent / vehicles they own.
+    // - GM: can open anything (but still blocked for NPC/Unnatural from this UI).
     $(document).on("click", "#dg-full-report-btn", (ev) => {
       ev.preventDefault();
-      if (!this.currentRecordId) {
+
+      const recordId = this.currentRecordId;
+      if (!recordId) {
         ui.notifications.warn("No active record selected.");
         return;
       }
-      const actor = game.actors.get(this.currentRecordId);
-      if (actor?.sheet) {
+
+      const actor = game.actors.get(recordId);
+      if (!actor) {
+        ui.notifications.warn("Record not found.");
+        return;
+      }
+
+      const type = actor.type;
+      const isAgent = type === "agent";
+      const isVehicle =
+        type === "vehicle" || actor.getFlag(DeltaGreenUI.ID, "isVehicle") === true;
+
+      const isNpcOrUnnatural =
+        type === "npc" ||
+        type === "unnatural" ||
+        actor.getFlag(DeltaGreenUI.ID, "isNpcRecord") === true ||
+        actor.getFlag(DeltaGreenUI.ID, "isUnnaturalNpc") === true;
+
+      const hasOwnerAccess =
+        actor.isOwner ||
+        (typeof actor.testUserPermission === "function" &&
+          actor.testUserPermission(game.user, "OWNER"));
+
+      // From the Records UI we *never* open full sheets for NPC / Unnatural.
+      if (isNpcOrUnnatural) {
+        ui.notifications.warn("Full report is restricted for this record.");
+        return;
+      }
+
+      if (!game.user.isGM) {
+        // Players: only for Agents / Vehicles they own.
+        if (!hasOwnerAccess || (!isAgent && !isVehicle)) {
+          ui.notifications.warn("You don’t have access to that full report.");
+          return;
+        }
+      }
+
+      if (actor.sheet) {
         actor.sheet.render(true);
       } else {
         ui.notifications.warn("No character sheet available for this record.");
@@ -361,13 +402,13 @@ export class RecordsManager {
     } else {
       trained.forEach((s) => {
         $line.append(
-          $(
-            `<span class="dg-skill"
+          $(`
+            <span class="dg-skill"
                   data-skill-label="${s.label}"
                   data-skill-target="${s.pct}">
               ${s.label} <span class="dg-skill-val">${s.pct}%</span>
-            </span>`
-          )
+            </span>
+          `)
         );
       });
     }
@@ -711,11 +752,11 @@ export class RecordsManager {
           displayText = `${firstName} ${lastName} - ${reference}`.trim();
         }
 
-        const li = $(
-          `<li class="dg-result-item" data-record-id="${record.id}">
+        const li = $(`
+          <li class="dg-result-item" data-record-id="${record.id}">
             ${displayText}
-          </li>`
-        );
+          </li>
+        `);
 
         li.on("contextmenu", function (e) {
           e.preventDefault();
@@ -746,15 +787,15 @@ export class RecordsManager {
   static _renderFolderNode(node, container) {
     const RM = this;
 
-    const li = $(
-      `<li class="dg-folder-node" data-folder-id="${node.folder.id}">
+    const li = $(`
+      <li class="dg-folder-node" data-folder-id="${node.folder.id}">
         <div class="dg-folder-header">
           <span class="dg-folder-toggle">[-]</span>
           <span class="dg-folder-name">${node.folder.name}</span>
         </div>
         <ul class="dg-folder-contents"></ul>
-      </li>`
-    );
+      </li>
+    `);
 
     container.append(li);
 
@@ -777,11 +818,11 @@ export class RecordsManager {
         displayText = `${firstName} ${lastName} - ${reference}`.trim();
       }
 
-      const actorLi = $(
-        `<li class="dg-result-item" data-record-id="${record.id}">
+      const actorLi = $(`
+        <li class="dg-result-item" data-record-id="${record.id}">
           ${displayText}
-        </li>`
-      );
+        </li>
+      `);
 
       actorLi.on("contextmenu", function (e) {
         e.preventDefault();
@@ -883,11 +924,11 @@ export class RecordsManager {
         displayText = `${firstName} ${lastName} - ${reference}`.trim();
       }
 
-      const li = $(
-        `<li class="dg-result-item" data-record-id="${record.id}">
+      const li = $(`
+        <li class="dg-result-item" data-record-id="${record.id}">
           ${displayText}
-        </li>`
-      );
+        </li>
+      `);
 
       li.on("contextmenu", function (e) {
         e.preventDefault();
@@ -1037,6 +1078,7 @@ export class RecordsManager {
       $humanForm.find(".dg-human-only").show();
 
       $("#dg-label-reference").text("Occupation");
+      "#dg-label-firstname";
       $("#dg-label-firstname").text("First Name");
       $("#dg-label-middlename").text("Last Name");
       $("#dg-label-address").text("Address");
@@ -1060,7 +1102,10 @@ export class RecordsManager {
     if ($header.length) $("#dg-case-agent-stats").appendTo($header);
 
     // NPC vs Agent layout: treat unnatural as NPC layout
-    const isNpc = actor.type === "npc" || actor.type === "unnatural";
+    const isNpc =
+      actor.type === "npc" ||
+      isUnnatural ||
+      actor.getFlag(DeltaGreenUI.ID, "isNpcRecord") === true;
     const isAgent = actor.type === "agent";
 
     $humanForm.toggleClass("dg-npc-view", isNpc);
@@ -1071,7 +1116,7 @@ export class RecordsManager {
       $("#dg-case-agent-stats").empty().hide();
     }
 
-    // NEW: Ensure FULL REPORT button exists and styled like SAVE
+    // Ensure FULL REPORT button exists and styled like SAVE
     const $saveBtn = $("#dg-save-record");
     if ($saveBtn.length && !$("#dg-full-report-btn").length) {
       const saveClasses = $saveBtn.attr("class") || "";
@@ -1083,6 +1128,22 @@ export class RecordsManager {
         </button>
       `);
       $saveBtn.after($fullBtn);
+    }
+
+    // Visibility rule for FULL REPORT:
+    // - Never show for NPC / Unnatural from this form.
+    // - Show only when this is an Agent AND user is GM or OWNER of that actor.
+    const $fullBtn = $("#dg-full-report-btn");
+    if ($fullBtn.length) {
+      const hasOwnerAccess =
+        actor.isOwner ||
+        (typeof actor.testUserPermission === "function" &&
+          actor.testUserPermission(game.user, "OWNER"));
+
+      const canSeeFullReport =
+        isAgent && (game.user.isGM || hasOwnerAccess) && !isNpc && !isUnnatural;
+
+      $fullBtn.toggle(canSeeFullReport);
     }
   }
 

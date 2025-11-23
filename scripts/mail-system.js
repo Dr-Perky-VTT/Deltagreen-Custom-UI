@@ -1,10 +1,12 @@
+
+
 // mail-system.js
 import { DeltaGreenUI } from "./delta-green-ui.js";
 
 export class MailSystem {
   static messages = [];
   static currentModifier = 0; // one-shot modifier: -40, -20, 0, +20, +40
-
+  static showSkillNumbers = true;
   /* ------------------------------------------------------------------------ */
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
@@ -462,73 +464,87 @@ export class MailSystem {
   }
 
   // Color SAN CHECK based on SAN vs Breaking Point
-  static _refreshSanButtonStatus(actor = null) {
-    try {
-      const current = actor || this._getCurrentActor();
-      const $btn = $("#dg-san-check-btn");
-      if (!current || !$btn.length) return;
+// UPDATED: SAN status respects GM "allowSanNumbers" setting
+static _refreshSanButtonStatus(actor = null) {
+  try {
+    const current = actor || this._getCurrentActor();
+    const $btn = $("#dg-san-check-btn");
+    if (!current || !$btn.length) return;
 
-      const sanCurrent = Number(
-        foundry.utils.getProperty(current, "system.sanity.value") ?? 0
-      );
-      const sanMax = Number(
-        foundry.utils.getProperty(current, "system.sanity.max") ?? 99
-      );
-      const breakingPoint = Number(
-        foundry.utils.getProperty(
-          current,
-          "system.sanity.currentBreakingPoint"
-        )
-      );
+    const sanCurrent = Number(
+      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+    );
+    const sanMax = Number(
+      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
+    );
+    const breakingPoint = Number(
+      foundry.utils.getProperty(
+        current,
+        "system.sanity.currentBreakingPoint"
+      )
+    );
 
-      // Reset classes
-      $btn.removeClass("dg-san-safe dg-san-warn dg-san-bad");
+    // GM-only world setting: can SAN ever show numbers?
+    const allowSanNumbers = game.settings.get(
+      "deltagreen-custom-ui",
+      "allowSanNumbers"
+    );
 
-      // If we don't have sane data, just show unknown
-      if (
-        !Number.isFinite(sanCurrent) ||
-        !Number.isFinite(breakingPoint) ||
-        breakingPoint <= 0
-      ) {
-        $btn.text("SAN — STATUS UNKNOWN");
-        return;
-      }
+    // Reset classes
+    $btn.removeClass("dg-san-safe dg-san-warn dg-san-bad");
 
-      const ratio = sanCurrent / breakingPoint;
-
-      let label;
-      let cls;
-
-      if (ratio >= 1.5) {
-        label = "GROUNDED";
-        cls = "dg-san-safe";
-      } else if (ratio >= 1.1) {
-        label = "STABLE";
-        cls = "dg-san-safe";
-      } else if (ratio >= 0.8) {
-        label = "FRAYED";
-        cls = "dg-san-warn";
-      } else if (ratio >= 0.5) {
-        label = "UNRAVELLING";
-        cls = "dg-san-warn";
-      } else {
-        label = "COMPROMISED";
-        cls = "dg-san-bad";
-      }
-
-      $btn.addClass(cls);
-      $btn.text(`SAN: ${label}`);
-    } catch (err) {
-      console.error("Delta Green UI | _refreshSanButtonStatus error:", err);
+    // If we don't have sane data, just show unknown
+    if (
+      !Number.isFinite(sanCurrent) ||
+      !Number.isFinite(breakingPoint) ||
+      breakingPoint <= 0
+    ) {
+      $btn.text("SAN — STATUS UNKNOWN");
+      return;
     }
+
+    const ratio = sanCurrent / breakingPoint;
+
+    let label;
+    let cls;
+
+    if (ratio >= 1.5) {
+      label = "GROUNDED";
+      cls = "dg-san-safe";
+    } else if (ratio >= 1.1) {
+      label = "STABLE";
+      cls = "dg-san-safe";
+    } else if (ratio >= 0.8) {
+      label = "FRAYED";
+      cls = "dg-san-warn";
+    } else if (ratio >= 0.5) {
+      label = "UNRAVELLING";
+      cls = "dg-san-warn";
+    } else {
+      label = "COMPROMISED";
+      cls = "dg-san-bad";
+    }
+
+    $btn.addClass(cls);
+
+    // If GM allows numbers, prefix the label with current SAN %.
+    // Otherwise we keep it fully vibe-based.
+    if (allowSanNumbers && Number.isFinite(sanCurrent)) {
+      $btn.text(`SAN ${sanCurrent}% — ${label}`);
+    } else {
+      $btn.text(`SAN: ${label}`);
+    }
+  } catch (err) {
+    console.error("Delta Green UI | _refreshSanButtonStatus error:", err);
   }
+}
 
   // Inject "LOGGED IN: Agent X" into the mail header
   static _updateMailHeaderActorName(actor = null) {
     try {
       const current = actor || this._getCurrentActor();
       const rawName = current?.name || "UNKNOWN";
-      const shortName = current ? this._shortenName(rawName) : "";
+      const shortName = this._shortenName(rawName);
       const upperName = shortName || "UNKNOWN";
 
       // Preferred: use dedicated span if present
@@ -564,45 +580,75 @@ export class MailSystem {
     }
   }
 
-  static refreshStatButtons() {
-    const actor = this._getCurrentActor();
+// UPDATED: stat buttons obey MailSystem.showSkillNumbers
+// UPDATED: stat buttons obey MailSystem.showSkillNumbers and show % (x5)
+static refreshStatButtons() {
+  const actor = this._getCurrentActor();
+  const showNums = MailSystem.showSkillNumbers;
 
-    $(".dg-stat-roll-btn, #dg-luck-roll-btn").each((_, el) => {
-      const $btn = $(el);
+  $(".dg-stat-roll-btn").each((_, el) => {
+    const $btn = $(el);
+    const key = $btn.data("stat"); // e.g. "STR", "CON", etc.
 
-      // Cache original label once (e.g. "STR")
-      if (!$btn.data("baseLabel")) {
-        $btn.data("baseLabel", ($btn.text() || "").trim());
+    if (!actor || !key) {
+      $btn.hide();
+      return;
+    }
+
+    // Try a few common roots so this is resilient to your system schema
+    const statsRoot =
+      actor.system?.stats ||
+      actor.system?.statistics ||
+      actor.system?.characteristics ||
+      actor.system?.attributes ||
+      {};
+
+    // Try key, lower, upper so "str" / "STR" both work
+    const statObj =
+      statsRoot[key] ||
+      statsRoot[key.toLowerCase?.()] ||
+      statsRoot[key.toUpperCase?.()];
+
+    const rawVal = statObj?.value ?? statObj?.score ?? statObj;
+    const val = Number(rawVal);
+
+    // If we can't get a numeric value, just hide the button
+    if (!statObj || Number.isNaN(val)) {
+      $btn.hide();
+      return;
+    }
+
+    // Cache base label once so we don't keep appending numbers
+    if (!$btn.data("baseLabel")) {
+      const existing = ($btn.text() || "").toString().trim();
+      const baseLabel = existing || key.toString().toUpperCase();
+      $btn.data("baseLabel", baseLabel);
+    }
+
+    const baseLabel = $btn.data("baseLabel");
+
+    // Decide what to show
+    let label = baseLabel;
+
+    if (showNums) {
+      // If it's a small value (like 13), assume it's raw and convert to % (x5)
+      // If it's already a big number (like 65), assume it's already a %.
+      let percent = val;
+      if (val <= 20) {
+        percent = val * 5;
       }
-      const baseLabel = $btn.data("baseLabel") || "";
 
-      if (!actor) {
-        $btn.text(baseLabel);
-        return;
-      }
+      // Clamp to something sane just in case
+      if (percent < 0) percent = 0;
+      if (percent > 200) percent = 200;
 
-      // Luck is a flat 50% in vanilla DG
-      if ($btn.is("#dg-luck-roll-btn")) {
-        $btn.text(`${baseLabel} 50%`);
-        return;
-      }
+      label = `${baseLabel} ${percent}%`;
+    }
 
-      const statKey = $btn.data("stat");
-      if (!statKey) {
-        $btn.text(baseLabel);
-        return;
-      }
-
-      const stat = actor.system?.statistics?.[statKey];
-      if (!stat) {
-        $btn.text(baseLabel);
-        return;
-      }
-
-      const baseTarget = Number(stat.x5 ?? stat.value * 5) || 0;
-      $btn.text(`${baseLabel} ${baseTarget}%`);
-    });
-  }
+    $btn.text(label);
+    $btn.show();
+  });
+}
 
   // adjust HP by +1 / -1 from the buttons
   static async _adjustHp(delta) {
@@ -620,8 +666,8 @@ export class MailSystem {
 
       const curRaw = Number(foundry.utils.getProperty(actor, hpPath) ?? 0);
       const maxRaw = Number(
-        foundry.utils.getProperty(actor, hpMaxPath) ??
-          foundry.utils.getProperty(actor, hpPath) ??
+        foundry.utils.getProperty(actor, hpMaxPath) ?? 
+          foundry.utils.getProperty(actor, hpPath) ?? 
           0
       );
 
@@ -657,8 +703,8 @@ export class MailSystem {
 
       const curRaw = Number(foundry.utils.getProperty(actor, wpPath) ?? 0);
       const maxRaw = Number(
-        foundry.utils.getProperty(actor, wpMaxPath) ??
-          foundry.utils.getProperty(actor, wpPath) ??
+        foundry.utils.getProperty(actor, wpMaxPath) ?? 
+          foundry.utils.getProperty(actor, wpPath) ?? 
           0
       );
 
@@ -772,97 +818,117 @@ export class MailSystem {
   }
 
   // UPDATED: show skill % on buttons, and hide untrained (<10%) base skills
-  static refreshSkillHotbar() {
-    const actor = this._getCurrentActor();
-    const skills = actor?.system?.skills || {};
+// UPDATED: obey MailSystem.showSkillNumbers
+static refreshSkillHotbar() {
+  const actor = this._getCurrentActor();
+  const skills = actor?.system?.skills || {};
+  const showNums = MailSystem.showSkillNumbers;
 
-    $(".dg-skill-roll-btn")
-      .not(".dg-typed-skill-btn")
-      .each((_, el) => {
-        const $btn = $(el);
-        const uiKey = $btn.data("skill");
+  $(".dg-skill-roll-btn")
+    .not(".dg-typed-skill-btn")
+    .each((_, el) => {
+      const $btn = $(el);
+      const uiKey = $btn.data("skill");
 
-        if (!uiKey || !actor) {
-          $btn.hide();
-          return;
-        }
+      if (!uiKey || !actor) {
+        $btn.hide();
+        return;
+      }
 
-        const systemKey = this._mapSkillKey(uiKey);
-        const skillObj = skills[systemKey];
-        const prof = Number(skillObj?.proficiency ?? 0);
+      const systemKey = this._mapSkillKey(uiKey);
+      const skillObj = skills[systemKey];
+      const prof = Number(skillObj?.proficiency ?? 0);
 
-        if (!skillObj || Number.isNaN(prof) || prof < 10) {
-          $btn.hide();
-          return;
-        }
+      if (!skillObj || Number.isNaN(prof) || prof < 10) {
+        $btn.hide();
+        return;
+      }
 
-        const isMarked = !!skillObj.failure; // ☣ if this is true
+      const isMarked = !!skillObj.failure; // ☣ if this is true
 
-        // Cache the base label once so we don't keep appending
-        if (!$btn.data("baseLabel")) {
-          const existing = ($btn.text() || "").toString().trim();
-          const baseLabel =
-            existing ||
-            (
-              game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
-              systemKey
-            ).toString().toUpperCase();
-          $btn.data("baseLabel", baseLabel);
-        }
+      // Cache the base label once so we don't keep appending stuff
+      if (!$btn.data("baseLabel")) {
+        const existing = ($btn.text() || "").toString().trim();
+        const baseLabel =
+          existing ||
+          (
+            game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
+            systemKey
+          ).toString().toUpperCase();
+        $btn.data("baseLabel", baseLabel);
+      }
 
-        const baseLabel = $btn.data("baseLabel");
-        const percentPart = isMarked ? `${prof}% ☣` : `${prof}%`;
-        $btn.text(`${baseLabel} (${percentPart})`);
-        $btn.show();
-      });
-  }
+      const baseLabel = $btn.data("baseLabel");
+
+      // Build label according to toggle
+      let label = baseLabel;
+      if (showNums) {
+        label = `${baseLabel} ${prof}%`;
+      }
+
+      if (isMarked) {
+        label = `${label} ☣`;
+      }
+
+      $btn.text(label);
+      $btn.show();
+    });
+}
 
   // UPDATED: typed skill labels + %
-  static refreshTypedSkillButtons() {
-    const actor = this._getCurrentActor();
-    const $skillBar = $(".dg-mail-base-skillbar");
-    if (!$skillBar.length) return;
+// UPDATED: typed skill labels obey MailSystem.showSkillNumbers
+static refreshTypedSkillButtons() {
+  const actor = this._getCurrentActor();
+  const $skillBar = $(".dg-mail-base-skillbar");
+  if (!$skillBar.length) return;
 
-    $skillBar.find(".dg-typed-skill-btn").remove();
-    if (!actor) return;
+  $skillBar.find(".dg-typed-skill-btn").remove();
+  if (!actor) return;
 
-    const typedSkills = actor.system?.typedSkills || {};
-    const entries = Object.entries(typedSkills)
-      .filter(([_, s]) => {
-        const val = Number(s?.proficiency ?? 0);
-        return !Number.isNaN(val) && val > 0;
-      })
-      .sort((a, b) => {
-        const [, A] = a,
-          [, B] = b;
-        const labelA = `${(A.group || "").toUpperCase()} (${(
-          A.label || ""
-        ).toUpperCase()})`;
-        const labelB = `${(B.group || "").toUpperCase()} (${(
-          B.label || ""
-        ).toUpperCase()})`;
-        return labelA.localeCompare(labelB);
-      });
+  const showNums = MailSystem.showSkillNumbers;
+  const typedSkills = actor.system?.typedSkills || {};
 
-    for (const [key, skill] of entries) {
-      const val = Number(skill?.proficiency ?? 0) || 0;
-      const isMarked = !!skill.failure; // ☣ here too
-
-      const baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
-        skill.label || key
+  const entries = Object.entries(typedSkills)
+    .filter(([_, s]) => {
+      const val = Number(s?.proficiency ?? 0);
+      return !Number.isNaN(val) && val > 0;
+    })
+    .sort((a, b) => {
+      const [, A] = a,
+        [, B] = b;
+      const labelA = `${(A.group || "").toUpperCase()} (${(
+        A.label || ""
       ).toUpperCase()})`;
+      const labelB = `${(B.group || "").toUpperCase()} (${(
+        B.label || ""
+      ).toUpperCase()})`;
+      return labelA.localeCompare(labelB);
+    });
 
-      const percentPart = isMarked ? `${val}% ☣` : `${val}%`;
-      const label = `${baseLabel} (${percentPart})`;
+  for (const [key, skill] of entries) {
+    const prof = Number(skill.proficiency ?? 0);
+    const isMarked = !!skill.failure; // ☣ marker
 
-      const $btn = $(`
-        <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
-          ${label}
-        </button>
-      `);
-      $skillBar.append($btn);
+    let baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
+      skill.label || key
+    ).toUpperCase()})`;
+
+    let labelText = baseLabel;
+    if (showNums) {
+      labelText = `${baseLabel} ${prof}%`;
     }
+    if (isMarked) {
+      labelText = `${labelText} ☣`;
+    }
+
+    const $btn = $(`
+      <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
+        ${labelText}
+      </button>
+    `);
+    $skillBar.append($btn);
   }
+}
 
   static refreshWeaponHotbar() {
     const actor = this._getCurrentActor();
@@ -1327,7 +1393,7 @@ export class MailSystem {
   }
 
   /* ------------------------------------------------------------------------ */
-  /* SAN CHECK MACRO (dialog + adaptation)                                   */
+  /* SAN CHECK MACRO (dialog + adaptation + temporary insanity)              */
   /* ------------------------------------------------------------------------ */
 
   static async runSanCheckDialogMacro() {
@@ -1636,9 +1702,14 @@ export class MailSystem {
             }`
           );
         }
+        if (loss >= 5) {
+          console.log(
+            `  TEMPORARY INSANITY TRIGGERED (loss ${loss} SAN in a single check).`
+          );
+        }
       }
 
-      // ---------- 7. Player-facing narrative ----------
+      // ---------- 7. Player-facing narrative + TEMPORARY INSANITY ----------
       const hasBP2 = hasBP;
       let publicText = "";
       if (hasBP2 && crossedBreaking) {
@@ -1672,6 +1743,23 @@ export class MailSystem {
           tag = "SAN FAILURE";
         }
         publicText = `<p><b>${displayName}</b>: ${line}</p><p><b>${tag}</b>.</p>`;
+      }
+
+      // ---- TEMPORARY INSANITY: RAW = 5+ SAN lost in a single roll ----
+      if (loss >= 5) {
+        publicText += `
+        <p style="margin-top: 8px;">
+          <b>TEMPORARY INSANITY TRIGGERED:</b> ${displayName} has lost
+          <b>${loss}</b> SAN from this single shock. For a short time, the Agent is not thinking clearly.
+        </p>
+        <p style="font-size: 19px; opacity: 0.9;">
+          <b>HANDLER &amp; PLAYER:</b> Decide together how this episode manifests:
+          <b>FLEE</b> (panic escape), <b>STRUGGLE</b> (reckless aggression), or
+          <b>SUBMIT</b> (shutdown/catatonia), in a way that fits the scene and SAN source.
+          In relatively calm circumstances, a successful <b>Psychotherapy</b> test may help
+          end the episode early.
+        </p>
+      `;
       }
 
       await ChatMessage.create({
@@ -2288,3 +2376,26 @@ export class MailSystem {
     }
   }
 }
+// Global delegated handler for the SHOW% / HIDE% toggle button
+$(document).on("click", "#dg-toggle-skill-numbers", (event) => {
+  event.preventDefault();
+
+  // Flip the flag
+  MailSystem.showSkillNumbers = !MailSystem.showSkillNumbers;
+
+  const $btn = $(event.currentTarget);
+
+  // Update button text & a helper class so you can style it if you want
+  if (MailSystem.showSkillNumbers) {
+    $btn.text("SHOW %");
+    $btn.removeClass("dg-skillnumbers-hidden").addClass("dg-skillnumbers-visible");
+  } else {
+    $btn.text("HIDE %");
+    $btn.removeClass("dg-skillnumbers-visible").addClass("dg-skillnumbers-hidden");
+  }
+
+  // Rebuild the buttons so they reflect the new mode
+  MailSystem.refreshSkillHotbar();
+  MailSystem.refreshTypedSkillButtons();
+  MailSystem.refreshStatButtons?.();
+});

@@ -16,7 +16,7 @@ import { ColorThemeManager } from "./color-theme-manager.js";
 import { BankingManager } from "./banking-manager.js";
 import { ExpensesManager } from "./equipment-catalog.js";
 import { CombatManager } from "./combat-manager.js";
-
+import { HealthManager } from "./health-manager.js";
 // ---------------------------------------------------------------------------
 // Shared font list so settings UI + CRT dropdown stay in sync
 // ---------------------------------------------------------------------------
@@ -504,7 +504,9 @@ static updateTopStatusBar() {
           <div class="dg-mail-skillbar dg-mail-modbar">
             <button class="dg-button dg-mod-btn" data-mod="-40">-40</button>
             <button class="dg-button dg-mod-btn" data-mod="-20">-20</button>
+			<button class="dg-button dg-mod-btn" data-mod="-10">-10</button>
             <button class="dg-button dg-mod-btn" data-mod="0">0</button>
+			<button class="dg-button dg-mod-btn" data-mod="10">+10</button>
             <button class="dg-button dg-mod-btn" data-mod="20">+20</button>
             <button class="dg-button dg-mod-btn" data-mod="40">+40</button>
           </div>
@@ -594,12 +596,12 @@ static updateTopStatusBar() {
   /*  MINI CHAT / ROLL FEED WINDOW (BOTTOM-LEFT)                             */
   /* ----------------------------------------------------------------------- */
 
-  static _injectMiniChatWindow() {
-    if (document.getElementById("dg-mini-chat")) return;
+static _injectMiniChatWindow() {
+  if (document.getElementById("dg-mini-chat")) return;
 
-    const wrap = document.createElement("div");
-    wrap.id = "dg-mini-chat";
-    wrap.innerHTML = `
+  const wrap = document.createElement("div");
+  wrap.id = "dg-mini-chat";
+  wrap.innerHTML = `
       <div id="dg-mini-chat-header">
         <span id="dg-mini-chat-title">ROLL FEED</span>
         <button id="dg-mini-chat-toggle" class="dg-button dg-mini-chat-toggle">
@@ -608,30 +610,76 @@ static updateTopStatusBar() {
       </div>
       <div id="dg-mini-chat-body"></div>
     `;
-    document.body.appendChild(wrap);
+  document.body.appendChild(wrap);
   DeltaGreenUI.applyLayoutSettings?.();
-    // Toggle collapse/expand
-    $(document)
-      .off("click.dgMiniChatToggle", "#dg-mini-chat-toggle")
-      .on("click.dgMiniChatToggle", "#dg-mini-chat-toggle", (ev) => {
-        ev.preventDefault();
-        const body = document.getElementById("dg-mini-chat-body");
-        const btn = ev.currentTarget;
-        if (!body || !btn) return;
 
-        const isHidden =
-          body.style.display === "none" ||
-          getComputedStyle(body).display === "none";
+  // Toggle collapse/expand
+  $(document)
+    .off("click.dgMiniChatToggle", "#dg-mini-chat-toggle")
+    .on("click.dgMiniChatToggle", "#dg-mini-chat-toggle", (ev) => {
+      ev.preventDefault();
+      const body = document.getElementById("dg-mini-chat-body");
+      const btn = ev.currentTarget;
+      if (!body || !btn) return;
 
-        if (isHidden) {
-          body.style.display = "";
-          btn.textContent = "▾"; // expanded (arrow down)
-        } else {
-          body.style.display = "none";
-          btn.textContent = "▴"; // collapsed (arrow up)
-        }
-      });
+      const isHidden =
+        body.style.display === "none" ||
+        getComputedStyle(body).display === "none";
+
+      if (isHidden) {
+        body.style.display = "";
+        btn.textContent = "▾"; // expanded (arrow down)
+      } else {
+        body.style.display = "none";
+        btn.textContent = "▴"; // collapsed (arrow up)
+      }
+    });
+}
+
+/**
+ * Mini roll feed: mirror the RollsManager (same source as the ROLLS view).
+ * Ignores arguments and just reads RollsManager.rolls.
+ */
+static updateMiniChatWindow(_messages = null) {
+  try {
+    const body = document.getElementById("dg-mini-chat-body");
+    if (!body) return;
+
+    body.innerHTML = "";
+
+    // Require RollsManager + some rolls
+    if (!RollsManager || !Array.isArray(RollsManager.rolls) || !RollsManager.rolls.length) {
+      body.innerHTML = `<div class="dg-mini-chat-entry dg-placeholder">NO ROLLS YET</div>`;
+      return;
+    }
+
+    // Last few rolls only (keep it tight)
+    const recent = RollsManager.rolls.slice(-6);
+
+    for (const entryData of recent) {
+      const entry = document.createElement("div");
+      entry.className = "dg-mini-chat-entry";
+
+      // Sender like ROLLS window
+      const sender = document.createElement("div");
+      sender.classList.add("dg-rolls-sender");
+      sender.textContent = entryData.sender;
+      entry.appendChild(sender);
+
+      // Content is same HTML RollsManager uses (.dg-roll-result, etc.)
+      const content = document.createElement("div");
+      content.classList.add("dg-rolls-content");
+      content.innerHTML = entryData.content || "";
+      entry.appendChild(content);
+
+      body.appendChild(entry);
+    }
+
+    body.scrollTop = body.scrollHeight;
+  } catch (err) {
+    console.error("Delta Green UI | Error updating mini chat window:", err);
   }
+}
 
   /**
    * Mini roll feed: mirror the RollsManager (same source as the ROLLS view).
@@ -809,17 +857,18 @@ static updateTopStatusBar() {
         DeltaGreenUI.applyLayoutSettings?.();
       }
     });
-    game.settings.register("deltagreen-custom-ui", "showMiniRollFeed", {
-      name: "Show DG Mini Roll Feed",
-      hint: "Display the mini roll feed window in the bottom-left.",
-      scope: "client",
-      config: true,
-      type: Boolean,
-      default: true,
-      onChange: () => {
-        DeltaGreenUI.applyLayoutSettings?.();
-      }
-    });
+game.settings.register("deltagreen-custom-ui", "showMiniRollFeed", {
+  name: "Show DG Mini Roll Feed",
+  hint: "Display the mini roll feed window in the bottom-left.",
+  scope: "client",
+  config: true,
+  type: Boolean,
+  default: true,
+  onChange: () => {
+    DeltaGreenUI.applyLayoutSettings?.();
+  }
+});
+
 game.settings.register(this.ID, "scanlineIntensity", {
   name: "CRT Scanline Intensity",
   hint: "Controls opacity of the CRT scanline overlay (0 = off, 100 = very strong).",
@@ -945,83 +994,85 @@ game.settings.register(this.ID, "scanlineIntensity", {
 
   /* ------------------------------- Ready ---------------------------------- */
 
-  static async onReady() {
-    console.log("Delta Green UI | onReady");
+static async onReady() {
+  console.log("Delta Green UI | onReady");
 
-    try {
-      // 1) Theme + font immediately (safe)
-      const theme = game.settings.get(this.ID, "theme");
-      this.applyTheme(theme);
+  try {
+    // 1) Theme + font immediately (safe)
+    const theme = game.settings.get(this.ID, "theme");
+    this.applyTheme(theme);
 
-      const crtFont = game.settings.get(this.ID, "crtFont") || "";
-      this.applyFont(crtFont);
+    const crtFont = game.settings.get(this.ID, "crtFont") || "";
+    this.applyFont(crtFont);
 
-      // 1b) Apply layout visibility (skillbar + D-pad)
-      this.applyLayoutSettings();
+    // 1b) Apply layout visibility (skillbar + D-pad + mini roll feed)
+    this.applyLayoutSettings();
 
-      // 2) Ensure PC Records folder exists BEFORE anything can create actors
-      await this.createPCRecordsFolder();
+    // 2) Ensure PC Records folder exists BEFORE anything can create actors
+    await this.createPCRecordsFolder();
 
-      // 3) Load all partial templates first (verifies they exist)
-      await this.loadTemplates();
+    // 3) Load all partial templates first (verifies they exist)
+    await this.loadTemplates();
 
-      // 4) Render main interface into DOM so subsequent UI init has elements
-      const rendered = await this.renderInterface();
-      if (!rendered) return;
+    // 4) Render main interface into DOM so subsequent UI init has elements
+    const rendered = await this.renderInterface();
+    if (!rendered) return;
 
-      // 5) Ensure popups (journals, items, etc.) always sit above the CRT
-      this.enforcePopupZIndex();
-  const scanIntensity = game.settings.get(this.ID, "scanlineIntensity");
+    // 5) Ensure popups (journals, items, etc.) always sit above the CRT
+    this.enforcePopupZIndex();
+
+    // Scanline intensity
+    const scanIntensity = game.settings.get(this.ID, "scanlineIntensity");
     this.applyScanlineIntensity(scanIntensity);
-      // 6) Now that DOM exists, init feature modules
-      UIComponents.init();
-      RecordsManager.init();
-      MailSystem.init();
-      JournalManager.init();
-      InventoryManager.init();
-      PsycheManager.init();
-      BankingManager.init();
-	  CombatManager.init();
 
-if (RollsManager && typeof RollsManager.init === "function") {
-  RollsManager.init();
-}
-      // 7) CRT is always available
-      setTimeout(() => {
-        if ($("#dg-crt-container").length) {
-          $("#dg-crt-container").show();
-          game.user.setFlag(this.ID, "interfaceActive", true);
+    // 6) Now that DOM exists, init feature modules
+    UIComponents.init();
+    RecordsManager.init();
+    MailSystem.init();
+    JournalManager.init();
+    InventoryManager.init();
+    PsycheManager.init();
+    BankingManager.init();
+    CombatManager.init();
+	HealthManager.init(); 
+    // NOTE: RollsManager.init() is NOT called here; it self-inits on "ready"
 
-          // NEW: mark that CRT overlay is visible for everyone
-          $("body").addClass("dg-crt-on");
+    // 7) CRT is always available
+    setTimeout(() => {
+      if ($("#dg-crt-container").length) {
+        $("#dg-crt-container").show();
+        game.user.setFlag(this.ID, "interfaceActive", true);
 
-          // Players: hide core UI, add overlay class
-          if (!game.user.isGM) {
-            $("body").addClass("dg-crt-active");
-            this.hideFoundryCoreUi();
-          } else {
-            // GM: never hide core UI, never use dg-crt-active
-            $("body").removeClass("dg-crt-active");
-          }
+        // NEW: mark that CRT overlay is visible for everyone
+        $("body").addClass("dg-crt-on");
 
-          this.updateTopStatusBar();
-          this.refreshBottomHotbar();
-          this.loadLastEntries();
-          this.moveDiceTrayToMail();
-          this._injectTokenCompass();
-          this._injectMiniChatWindow();
-          this.updateMiniChatWindow(); // draw mini roll feed once UI is live
-
+        // Players: hide core UI, add overlay class
+        if (!game.user.isGM) {
+          $("body").addClass("dg-crt-active");
+          this.hideFoundryCoreUi();
         } else {
-          console.error("Delta Green UI | Container not found after render");
-          ui.notifications.error("Error activating Delta Green UI interface");
+          // GM: never hide core UI, never use dg-crt-active
+          $("body").removeClass("dg-crt-active");
         }
-      }, 400);
-    } catch (error) {
-      console.error("Delta Green UI | Error in onReady:", error);
-      ui.notifications.error("Error initializing Delta Green UI");
-    }
+
+        this.updateTopStatusBar();
+        this.refreshBottomHotbar();
+        this.loadLastEntries();
+        this.moveDiceTrayToMail();
+        this._injectTokenCompass();
+        this._injectMiniChatWindow();
+        this.updateMiniChatWindow(); // draw mini roll feed once UI is live
+
+      } else {
+        console.error("Delta Green UI | Container not found after render");
+        ui.notifications.error("Error activating Delta Green UI interface");
+      }
+    }, 400);
+  } catch (error) {
+    console.error("Delta Green UI | Error in onReady:", error);
+    ui.notifications.error("Error initializing Delta Green UI");
   }
+}
 
   /* --------------------------- Web View toggles --------------------------- */
 
@@ -1456,7 +1507,7 @@ static applyScanlineIntensity(value) {
         ["#dg-view-banking",   `modules/${this.ID}/templates/banking-view.html`],
 		["#dg-view-sound",	   `modules/${this.ID}/templates/sound-view.html`],
 		["#dg-view-combat",    `modules/${this.ID}/templates/combat-view.html`],
-      ];
+	    ];
 
       for (const [sel, url] of paths) {
         try {
@@ -1582,7 +1633,11 @@ static applyScanlineIntensity(value) {
         DeltaGreenUI.toggleWebWindow();
     
       }
-
+if (view === "health") {
+  if (HealthManager && typeof HealthManager.refresh === "function") {
+    HealthManager.refresh();
+  }
+}
       // views that live inside the dropdown panel
       const $content = $("#dg-crt-content");
       const $this = $(this);
@@ -1672,7 +1727,30 @@ static applyScanlineIntensity(value) {
       ev.preventDefault();
       DeltaGreenUI.cycleTheme();
     });
+      // HEALTH panel close button: behaves like clicking the active menu item again
+    $(document)
+      .off("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']")
+      .on("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const $active = $(".dg-menu-item.active");
+        if ($active.length) {
+          // triggers the "same view" logic and collapses the dropdown
+          $active.trigger("click");
+        } else {
+          // Fallback: just hide the dropdown
+          DeltaGreenUI.currentView = null;
+          $(".dg-view").removeClass("active");
+          const $content = $("#dg-crt-content");
+          $content
+            .removeClass("dg-open")
+            .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
+        }
+      });
+
   }
+  
 
   /* ------------------------- Dropdown height helper ---------------------- */
 
