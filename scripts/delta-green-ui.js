@@ -1618,139 +1618,133 @@ static applyScanlineIntensity(value) {
 
   /* ------------------------- Interface Event Wiring ----------------------- */
 
-  static initInterfaceEvents() {
-    $("#dg-crt-menu").on("click", ".dg-menu-item", function () {
-      const view = $(this).data("view");
+static initInterfaceEvents() {
+  // MAIN MENU CLICK HANDLER
+  $("#dg-crt-menu").on("click", ".dg-menu-item", function () {
+    const view = $(this).data("view");
 
-      // special buttons that don't use the dropdown panel
-      if (view === "settings") {
-        game.settings.sheet.render(true);
-        return;
+    // Tell the HealthManager which view is active so it can hide/show itself
+    if (HealthManager && typeof HealthManager.showForView === "function") {
+      HealthManager.showForView(view);
+    }
+
+    // --- special buttons that don't use the dropdown panel ---
+    if (view === "settings") {
+      game.settings.sheet.render(true);
+      return;
+    }
+
+    if (view === "web") {
+      // WEB is a floating window, not a dropdown view
+      DeltaGreenUI.toggleWebWindow();
+      return;
+    }
+
+    if (view === "health") {
+      // Make sure the health panel refreshes when opened
+      if (HealthManager && typeof HealthManager.refresh === "function") {
+        HealthManager.refresh();
       }
+    }
 
-      if (view === "web") {
-        // keep WEB as floating window, not in dropdown
-        DeltaGreenUI.toggleWebWindow();
-    
-      }
-if (view === "health") {
-  if (HealthManager && typeof HealthManager.refresh === "function") {
-    HealthManager.refresh();
-  }
-}
-      // views that live inside the dropdown panel
-      const $content = $("#dg-crt-content");
-      const $this = $(this);
+    // --- views that live inside the dropdown panel ---
+    const $content = $("#dg-crt-content");
+    const $this = $(this);
 
-      const isSameView =
-        DeltaGreenUI.currentView === view && $content.is(":visible");
+    const isSameView =
+      DeltaGreenUI.currentView === view && $content.is(":visible");
 
-      // Click same menu item again: close dropdown
-      if (isSameView) {
+    // Clicking the same menu item again closes the dropdown
+    if (isSameView) {
+      DeltaGreenUI.currentView = null;
+      $(".dg-menu-item").removeClass("active");
+      $(".dg-view").removeClass("active");
+
+      $content
+        .removeClass("dg-open")
+        .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
+      return;
+    }
+
+    // Switch to new view
+    DeltaGreenUI.currentView = view;
+
+    $(".dg-menu-item").removeClass("active");
+    $this.addClass("active");
+
+    $(".dg-view").removeClass("active");
+    const $viewEl = $(`#dg-view-${view}`);
+    if ($viewEl.length) $viewEl.addClass("active");
+
+    // Open dropdown if needed
+    if (!$content.is(":visible")) {
+      $content
+        .addClass("dg-open")
+        .slideDown(150, () => DeltaGreenUI.adjustDropdownHeight());
+    } else {
+      DeltaGreenUI.adjustDropdownHeight();
+    }
+
+    // View-specific loading
+    if (view === "records")   RecordsManager.loadRecords();
+    if (view === "mail")      MailSystem.loadMessages();
+    if (view === "journal") {
+      DeltaGreenUI.loadJournals();
+      DeltaGreenUI.loadLastJournals();
+    }
+    if (view === "access")    DeltaGreenUI.loadPlayersList();
+    if (view === "system") {
+      DeltaGreenUI.forceDisplayLastEntries();
+      DeltaGreenUI.loadLastJournals();
+    }
+    if (view === "rolls")     DeltaGreenUI.loadRollsView();
+    if (view === "scene")     DeltaGreenUI.loadSceneFeed();
+    if (view === "inventory") InventoryManager.refresh();
+    if (view === "psyche")    PsycheManager.refresh();
+    if (view === "banking")   BankingManager.refresh();
+
+    // Let layout settle then re-adjust height to content
+    setTimeout(() => DeltaGreenUI.adjustDropdownHeight(), 100);
+  });
+
+  // OPEN AGENT SHEET
+  $("#dg-view-agent-sheet").on("click", () => {
+    const actor = game.user.character;
+    if (actor) actor.sheet.render(true);
+    else ui.notifications.warn(game.i18n.localize("DGUI.NoCharacterAssigned"));
+  });
+
+  // QUICK RECORDS SEARCH BUTTON
+  $("#dg-search-records-btn").on("click", () => {
+    $('.dg-menu-item[data-view="records"]').trigger("click");
+  });
+
+  // THEME CYCLE BUTTON
+  $(document).on("click", "#dg-theme-cycle-btn", (ev) => {
+    ev.preventDefault();
+    DeltaGreenUI.cycleTheme();
+  });
+
+  // HEALTH PANEL CLOSE BUTTON (safe to leave even if unused)
+  $(document)
+    .off("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']")
+    .on("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const $active = $(".dg-menu-item.active");
+      if ($active.length) {
+        $active.trigger("click");
+      } else {
         DeltaGreenUI.currentView = null;
-        $(".dg-menu-item").removeClass("active");
         $(".dg-view").removeClass("active");
-
+        const $content = $("#dg-crt-content");
         $content
           .removeClass("dg-open")
           .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
-        return;
       }
-
-      // Switch to new view
-      DeltaGreenUI.currentView = view;
-
-      $(".dg-menu-item").removeClass("active");
-      $this.addClass("active");
-
-      $(".dg-view").removeClass("active");
-      const $viewEl = $(`#dg-view-${view}`);
-      if ($viewEl.length) $viewEl.addClass("active");
-
-      // Open dropdown if needed
-      if (!$content.is(":visible")) {
-        $content
-          .addClass("dg-open")
-          .slideDown(150, () => DeltaGreenUI.adjustDropdownHeight());
-      } else {
-        DeltaGreenUI.adjustDropdownHeight();
-      }
-
-      // View-specific loading
-      if (view === "records") RecordsManager.loadRecords();
-      if (view === "mail") MailSystem.loadMessages();
-      if (view === "journal") {
-        DeltaGreenUI.loadJournals();
-        DeltaGreenUI.loadLastJournals();
-      }
-      if (view === "access") {
-        DeltaGreenUI.loadPlayersList();
-      }
-      if (view === "system") {
-        DeltaGreenUI.forceDisplayLastEntries();
-        DeltaGreenUI.loadLastJournals();
-      }
-      if (view === "rolls") {
-        DeltaGreenUI.loadRollsView();
-      }
-      if (view === "scene") {
-        DeltaGreenUI.loadSceneFeed();
-      }
-      if (view === "inventory") {
-        InventoryManager.refresh();
-      }
-      if (view === "psyche") {
-        PsycheManager.refresh();
-      }
-      if (view === "banking") {
-        BankingManager.refresh();
-      }
-      // Let layout settle then re-adjust height to content
-      setTimeout(() => DeltaGreenUI.adjustDropdownHeight(), 100);
     });
-
-    $("#dg-view-agent-sheet").on("click", () => {
-      const actor = game.user.character;
-      if (actor) actor.sheet.render(true);
-      else
-        ui.notifications.warn(
-          game.i18n.localize("DGUI.NoCharacterAssigned")
-        );
-    });
-
-    $("#dg-search-records-btn").on("click", () => {
-      $('.dg-menu-item[data-view="records"]').trigger("click");
-    });
-
-    // Theme cycle button (if present in your HTML)
-    $(document).on("click", "#dg-theme-cycle-btn", (ev) => {
-      ev.preventDefault();
-      DeltaGreenUI.cycleTheme();
-    });
-      // HEALTH panel close button: behaves like clicking the active menu item again
-    $(document)
-      .off("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']")
-      .on("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-
-        const $active = $(".dg-menu-item.active");
-        if ($active.length) {
-          // triggers the "same view" logic and collapses the dropdown
-          $active.trigger("click");
-        } else {
-          // Fallback: just hide the dropdown
-          DeltaGreenUI.currentView = null;
-          $(".dg-view").removeClass("active");
-          const $content = $("#dg-crt-content");
-          $content
-            .removeClass("dg-open")
-            .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
-        }
-      });
-
-  }
-  
+}
 
   /* ------------------------- Dropdown height helper ---------------------- */
 
