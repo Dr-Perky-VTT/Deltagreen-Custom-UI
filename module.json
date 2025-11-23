@@ -40,4 +40,8 @@
     }
   ],
   "flags": {}
+    "url": "https://github.com/Dr-Perky-VTT/deltagreen-custom-ui",
+  "manifest": "https://raw.githubusercontent.com/Dr-Perky-VTT/deltagreen-custom-ui/main/module.json",
+  "download": "https://github.com/Dr-Perky-VTT/deltagreen-custom-ui/archive/refs/heads/main.zip"
+}
 }
