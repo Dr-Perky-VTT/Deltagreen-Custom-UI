@@ -4,7 +4,7 @@
 // - Players see read-only balances + log for THEIR current agent
 // - GM sees same view plus a control panel that operates on a selected Agent
 
-const MODULE_ID = "deltagreen-ui";
+const MODULE_ID = "deltagreen-custom-ui";
 
 export class BankingManager {
   static MAX_LOG_ENTRIES = 30;
