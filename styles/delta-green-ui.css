@@ -2654,14 +2654,8 @@ body.dg-crt-on {
 
 /* Main wrapper inside the dropdown */
 .dg-health-panel {
-  margin: 8px 10px 10px;
-  padding: 8px 10px 10px;
-  border: 1px solid var(--dg-border-color, rgba(0, 255, 0, 0.35));
-  background: rgba(0, 0, 0, 0.6);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.75) inset;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 /* ========================================================================== */
 /* HEALTH VIEW LAYOUT                                                         */

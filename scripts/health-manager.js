@@ -355,7 +355,13 @@ export class HealthManager {
           </div>
         </div>
       </div> <!-- /.dg-health-columns -->
-    </div>   <!-- /.dg-health-layout -->
+       <div class="dg-mail-skillbar dg-mail-statbar">	   
+       <button class="dg-button dg-skill-roll-btn" data-skill="first_aid">FIRST AID</button>
+       <button class="dg-button dg-skill-roll-btn" data-skill="medicine">MEDICINE</button>
+	   <button class="dg-button dg-skill-roll-btn" data-skill="pharmacy">PHARMACY</button>
+	   <button class="dg-button dg-skill-roll-btn" data-skill="surgery">SURGERY</button>
+	   <button class="dg-button dg-stat-roll-btn" data-stat="con">CONSTITUTION</button>
+	   </div></div>   <!-- /.dg-health-layout -->
   </div>
 </div>
     `;
