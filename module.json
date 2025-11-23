@@ -28,36 +28,15 @@
   ],
   "packs": [
     {
-      "name": "PC-RECORDS",
-      "label": "PC-RECORDS",
-      "path": "packs/PC-RECORDS",
-      "type": "Actor",
+      "name": "Macros",
+      "label": "Macros",
+      "path": "packs/Macros",
+      "type": "Macro",
       "system": "deltagreen",
       "ownership": {
         "PLAYER": "OBSERVER",
         "ASSISTANT": "OWNER"
       }
-    },
-    {
-      "name": "PC-Journals",
-      "label": "PC-Journals",
-      "path": "packs/PC-Journals",
-      "type": "JournalEntry",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      }
-    },
-    {
-      "name": "Macros",
-      "label": "Macros",
-      "path": "packs/Macros",
-      "type": "Macro",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      },
-      "system": "deltagreen"
     }
   ],
   "flags": {}

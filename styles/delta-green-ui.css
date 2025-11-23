@@ -2642,3 +2642,9 @@ body.dg-crt-on {
 	text-transform: uppercase;
 	color: var(--dg-text-dim);
 }
+
+.dg-toggle-skillnumbers.dg-skillnumbers-hidden {
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+

@@ -1,10 +1,12 @@
+
+
 // mail-system.js
 import { DeltaGreenUI } from "./delta-green-ui.js";
 
 export class MailSystem {
   static messages = [];
   static currentModifier = 0; // one-shot modifier: -40, -20, 0, +20, +40
-
+  static showSkillNumbers = true;
   /* ------------------------------------------------------------------------ */
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
@@ -127,46 +129,18 @@ export class MailSystem {
       }
     });
 
-    Hooks.on("updateActor", (actor, changes, options, userId) => {
+    Hooks.on("updateActor", (actor) => {
       try {
         const current = this._getCurrentActor();
-        if (!current || current.id !== actor.id) return;
-
-        const sys = changes?.system || {};
-
-        // Did skills / typed skills change? (marking, improvements, etc.)
-        const affectsSkills =
-          sys.skills !== undefined || sys.typedSkills !== undefined;
-
-        // Did core stats (STR/CON/POW/etc.) change?
-        const affectsStats = sys.statistics !== undefined;
-
-        // Did HP / health / WP / sanity change?
-        const affectsHpWp =
-          sys.hp !== undefined ||
-          sys.health !== undefined ||
-          sys.wp !== undefined;
-        const affectsSan = sys.sanity !== undefined;
-
-        // Only rebuild the skill bars when skills actually changed
-        if (affectsSkills) {
+        if (current && current.id === actor.id) {
           this.refreshSkillHotbar();
           this.refreshTypedSkillButtons();
-        }
-
-        // Only rebuild stat buttons when statistics changed
-        if (affectsStats) {
+          this.refreshWeaponHotbar();
           this.refreshStatButtons();
-        }
-
-        // HP/WP/SAN panel only when those parts changed
-        if (affectsHpWp || affectsSan) {
           this.refreshHpWpPanel(actor);
           this._refreshSanButtonStatus(actor);
+          this._updateMailHeaderActorName(actor);
         }
-
-        // Header name is cheap; safe to keep this always
-        this._updateMailHeaderActorName(actor);
       } catch (err) {
         console.error("Delta Green UI | Error in updateActor hook:", err);
       }
@@ -556,7 +530,7 @@ export class MailSystem {
     try {
       const current = actor || this._getCurrentActor();
       const rawName = current?.name || "UNKNOWN";
-      const shortName = current ? this._shortenName(rawName) : "";
+      const shortName = this._shortenName(rawName);
       const upperName = shortName || "UNKNOWN";
 
       // Preferred: use dedicated span if present
@@ -592,45 +566,75 @@ export class MailSystem {
     }
   }
 
-  static refreshStatButtons() {
-    const actor = this._getCurrentActor();
+// UPDATED: stat buttons obey MailSystem.showSkillNumbers
+// UPDATED: stat buttons obey MailSystem.showSkillNumbers and show % (x5)
+static refreshStatButtons() {
+  const actor = this._getCurrentActor();
+  const showNums = MailSystem.showSkillNumbers;
 
-    $(".dg-stat-roll-btn, #dg-luck-roll-btn").each((_, el) => {
-      const $btn = $(el);
+  $(".dg-stat-roll-btn").each((_, el) => {
+    const $btn = $(el);
+    const key = $btn.data("stat"); // e.g. "STR", "CON", etc.
 
-      // Cache original label once (e.g. "STR")
-      if (!$btn.data("baseLabel")) {
-        $btn.data("baseLabel", ($btn.text() || "").trim());
+    if (!actor || !key) {
+      $btn.hide();
+      return;
+    }
+
+    // Try a few common roots so this is resilient to your system schema
+    const statsRoot =
+      actor.system?.stats ||
+      actor.system?.statistics ||
+      actor.system?.characteristics ||
+      actor.system?.attributes ||
+      {};
+
+    // Try key, lower, upper so "str" / "STR" both work
+    const statObj =
+      statsRoot[key] ||
+      statsRoot[key.toLowerCase?.()] ||
+      statsRoot[key.toUpperCase?.()];
+
+    const rawVal = statObj?.value ?? statObj?.score ?? statObj;
+    const val = Number(rawVal);
+
+    // If we can't get a numeric value, just hide the button
+    if (!statObj || Number.isNaN(val)) {
+      $btn.hide();
+      return;
+    }
+
+    // Cache base label once so we don't keep appending numbers
+    if (!$btn.data("baseLabel")) {
+      const existing = ($btn.text() || "").toString().trim();
+      const baseLabel = existing || key.toString().toUpperCase();
+      $btn.data("baseLabel", baseLabel);
+    }
+
+    const baseLabel = $btn.data("baseLabel");
+
+    // Decide what to show
+    let label = baseLabel;
+
+    if (showNums) {
+      // If it's a small value (like 13), assume it's raw and convert to % (x5)
+      // If it's already a big number (like 65), assume it's already a %.
+      let percent = val;
+      if (val <= 20) {
+        percent = val * 5;
       }
-      const baseLabel = $btn.data("baseLabel") || "";
 
-      if (!actor) {
-        $btn.text(baseLabel);
-        return;
-      }
+      // Clamp to something sane just in case
+      if (percent < 0) percent = 0;
+      if (percent > 200) percent = 200;
 
-      // Luck is a flat 50% in vanilla DG
-      if ($btn.is("#dg-luck-roll-btn")) {
-        $btn.text(`${baseLabel} 50%`);
-        return;
-      }
+      label = `${baseLabel} ${percent}%`;
+    }
 
-      const statKey = $btn.data("stat");
-      if (!statKey) {
-        $btn.text(baseLabel);
-        return;
-      }
-
-      const stat = actor.system?.statistics?.[statKey];
-      if (!stat) {
-        $btn.text(baseLabel);
-        return;
-      }
-
-      const baseTarget = Number(stat.x5 ?? stat.value * 5) || 0;
-      $btn.text(`${baseLabel} ${baseTarget}%`);
-    });
-  }
+    $btn.text(label);
+    $btn.show();
+  });
+}
 
   // adjust HP by +1 / -1 from the buttons
   static async _adjustHp(delta) {
@@ -648,8 +652,8 @@ export class MailSystem {
 
       const curRaw = Number(foundry.utils.getProperty(actor, hpPath) ?? 0);
       const maxRaw = Number(
-        foundry.utils.getProperty(actor, hpMaxPath) ??
-          foundry.utils.getProperty(actor, hpPath) ??
+        foundry.utils.getProperty(actor, hpMaxPath) ?? 
+          foundry.utils.getProperty(actor, hpPath) ?? 
           0
       );
 
@@ -685,8 +689,8 @@ export class MailSystem {
 
       const curRaw = Number(foundry.utils.getProperty(actor, wpPath) ?? 0);
       const maxRaw = Number(
-        foundry.utils.getProperty(actor, wpMaxPath) ??
-          foundry.utils.getProperty(actor, wpPath) ??
+        foundry.utils.getProperty(actor, wpMaxPath) ?? 
+          foundry.utils.getProperty(actor, wpPath) ?? 
           0
       );
 
@@ -800,97 +804,117 @@ export class MailSystem {
   }
 
   // UPDATED: show skill % on buttons, and hide untrained (<10%) base skills
-  static refreshSkillHotbar() {
-    const actor = this._getCurrentActor();
-    const skills = actor?.system?.skills || {};
+// UPDATED: obey MailSystem.showSkillNumbers
+static refreshSkillHotbar() {
+  const actor = this._getCurrentActor();
+  const skills = actor?.system?.skills || {};
+  const showNums = MailSystem.showSkillNumbers;
 
-    $(".dg-skill-roll-btn")
-      .not(".dg-typed-skill-btn")
-      .each((_, el) => {
-        const $btn = $(el);
-        const uiKey = $btn.data("skill");
+  $(".dg-skill-roll-btn")
+    .not(".dg-typed-skill-btn")
+    .each((_, el) => {
+      const $btn = $(el);
+      const uiKey = $btn.data("skill");
 
-        if (!uiKey || !actor) {
-          $btn.hide();
-          return;
-        }
+      if (!uiKey || !actor) {
+        $btn.hide();
+        return;
+      }
 
-        const systemKey = this._mapSkillKey(uiKey);
-        const skillObj = skills[systemKey];
-        const prof = Number(skillObj?.proficiency ?? 0);
+      const systemKey = this._mapSkillKey(uiKey);
+      const skillObj = skills[systemKey];
+      const prof = Number(skillObj?.proficiency ?? 0);
 
-        if (!skillObj || Number.isNaN(prof) || prof < 10) {
-          $btn.hide();
-          return;
-        }
+      if (!skillObj || Number.isNaN(prof) || prof < 10) {
+        $btn.hide();
+        return;
+      }
 
-        const isMarked = !!skillObj.failure; // ☣ if this is true
+      const isMarked = !!skillObj.failure; // ☣ if this is true
 
-        // Cache the base label once so we don't keep appending
-        if (!$btn.data("baseLabel")) {
-          const existing = ($btn.text() || "").toString().trim();
-          const baseLabel =
-            existing ||
-            (
-              game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
-              systemKey
-            ).toString().toUpperCase();
-          $btn.data("baseLabel", baseLabel);
-        }
+      // Cache the base label once so we don't keep appending stuff
+      if (!$btn.data("baseLabel")) {
+        const existing = ($btn.text() || "").toString().trim();
+        const baseLabel =
+          existing ||
+          (
+            game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
+            systemKey
+          ).toString().toUpperCase();
+        $btn.data("baseLabel", baseLabel);
+      }
 
-        const baseLabel = $btn.data("baseLabel");
-        const percentPart = isMarked ? `${prof}% ☣` : `${prof}%`;
-        $btn.text(`${baseLabel} (${percentPart})`);
-        $btn.show();
-      });
-  }
+      const baseLabel = $btn.data("baseLabel");
+
+      // Build label according to toggle
+      let label = baseLabel;
+      if (showNums) {
+        label = `${baseLabel} ${prof}%`;
+      }
+
+      if (isMarked) {
+        label = `${label} ☣`;
+      }
+
+      $btn.text(label);
+      $btn.show();
+    });
+}
 
   // UPDATED: typed skill labels + %
-  static refreshTypedSkillButtons() {
-    const actor = this._getCurrentActor();
-    const $skillBar = $(".dg-mail-base-skillbar");
-    if (!$skillBar.length) return;
+// UPDATED: typed skill labels obey MailSystem.showSkillNumbers
+static refreshTypedSkillButtons() {
+  const actor = this._getCurrentActor();
+  const $skillBar = $(".dg-mail-base-skillbar");
+  if (!$skillBar.length) return;
 
-    $skillBar.find(".dg-typed-skill-btn").remove();
-    if (!actor) return;
+  $skillBar.find(".dg-typed-skill-btn").remove();
+  if (!actor) return;
 
-    const typedSkills = actor.system?.typedSkills || {};
-    const entries = Object.entries(typedSkills)
-      .filter(([_, s]) => {
-        const val = Number(s?.proficiency ?? 0);
-        return !Number.isNaN(val) && val > 0;
-      })
-      .sort((a, b) => {
-        const [, A] = a,
-          [, B] = b;
-        const labelA = `${(A.group || "").toUpperCase()} (${(
-          A.label || ""
-        ).toUpperCase()})`;
-        const labelB = `${(B.group || "").toUpperCase()} (${(
-          B.label || ""
-        ).toUpperCase()})`;
-        return labelA.localeCompare(labelB);
-      });
+  const showNums = MailSystem.showSkillNumbers;
+  const typedSkills = actor.system?.typedSkills || {};
 
-    for (const [key, skill] of entries) {
-      const val = Number(skill?.proficiency ?? 0) || 0;
-      const isMarked = !!skill.failure; // ☣ here too
-
-      const baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
-        skill.label || key
+  const entries = Object.entries(typedSkills)
+    .filter(([_, s]) => {
+      const val = Number(s?.proficiency ?? 0);
+      return !Number.isNaN(val) && val > 0;
+    })
+    .sort((a, b) => {
+      const [, A] = a,
+        [, B] = b;
+      const labelA = `${(A.group || "").toUpperCase()} (${(
+        A.label || ""
       ).toUpperCase()})`;
+      const labelB = `${(B.group || "").toUpperCase()} (${(
+        B.label || ""
+      ).toUpperCase()})`;
+      return labelA.localeCompare(labelB);
+    });
 
-      const percentPart = isMarked ? `${val}% ☣` : `${val}%`;
-      const label = `${baseLabel} (${percentPart})`;
+  for (const [key, skill] of entries) {
+    const prof = Number(skill.proficiency ?? 0);
+    const isMarked = !!skill.failure; // ☣ marker
 
-      const $btn = $(`
-        <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
-          ${label}
-        </button>
-      `);
-      $skillBar.append($btn);
+    let baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
+      skill.label || key
+    ).toUpperCase()})`;
+
+    let labelText = baseLabel;
+    if (showNums) {
+      labelText = `${baseLabel} ${prof}%`;
     }
+    if (isMarked) {
+      labelText = `${labelText} ☣`;
+    }
+
+    const $btn = $(`
+      <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
+        ${labelText}
+      </button>
+    `);
+    $skillBar.append($btn);
   }
+}
 
   static refreshWeaponHotbar() {
     const actor = this._getCurrentActor();
@@ -1354,104 +1378,104 @@ export class MailSystem {
     }
   }
 
- /* ------------------------------------------------------------------------ */
-/* SAN CHECK MACRO (dialog + adaptation + temporary insanity)              */
-/* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------ */
+  /* SAN CHECK MACRO (dialog + adaptation + temporary insanity)              */
+  /* ------------------------------------------------------------------------ */
 
-static async runSanCheckDialogMacro() {
-  try {
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  static async runSanCheckDialogMacro() {
+    try {
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    // ---------- 1. Get actor ----------
-    let actor = this._getCurrentActor();
-    if (!actor) {
-      ui.notifications.error("Select a token or have an assigned character.");
-      return;
-    }
+      // ---------- 1. Get actor ----------
+      let actor = this._getCurrentActor();
+      if (!actor) {
+        ui.notifications.error("Select a token or have an assigned character.");
+        return;
+      }
 
-    const rawName = (actor.name || "UNKNOWN").trim();
-    const displayName = this._shortenName(rawName) || "UNKNOWN";
+      const rawName = (actor.name || "UNKNOWN").trim();
+      const displayName = this._shortenName(rawName) || "UNKNOWN";
 
-    // ---------- 0. Narrative pools ----------
-    const SAN_FAILURE_LINES = [
-      "Your thoughts skid sideways—nothing about this feels real anymore.",
-      "Your stomach drops; this is wrong in a way your mind can’t safely describe.",
-      "You blink once, twice, hoping the world resets. It doesn’t.",
-      "You will never sleep right again after this.",
-      "Something inside you gives way—like a support beam quietly snapping."
-    ];
-    const SAN_SUCCESS_LINES = [
-      "You feel the panic rising—and force it back down where it belongs.",
-      "Your pulse hammers, but training and habit slam the door on the worst of it.",
-      "You catalog the horror, box it up in your head, and move on—for now.",
-      "You swallow hard, steady your hands, and keep working the problem.",
-      "It shakes you, but it doesn’t break you. Not this time."
-    ];
-    const CRIT_SUCCESS_LINES = [
-      "For one clear second, you see it for exactly what it is—and that clarity saves you.",
-      "You ride the spike of terror like a wave, letting it crest and break without taking you under.",
-      "You lock eyes with the horror and something in you just… refuses to yield.",
-      "Your mind files this away with surgical precision: evidence, not nightmare.",
-      "You feel the crack coming—and reinforce it with sheer stubborn will."
-    ];
-    const CRIT_FAILURE_LINES = [
-      "Your mind doesn’t just slip—it plummets, screaming, with no handhold in sight.",
-      "Reality fractures into too many pieces to track; you grab one at random and cling to it.",
-      "The laugh, the sob, the scream—you’re not sure which one comes out, only that it does.",
-      "All your training vanishes; you’re a raw nerve, exposed to something that should not exist.",
-      "A terrible understanding floods in, burning away any hope that this is “just” madness."
-    ];
+      // ---------- 0. Narrative pools ----------
+      const SAN_FAILURE_LINES = [
+        "Your thoughts skid sideways—nothing about this feels real anymore.",
+        "Your stomach drops; this is wrong in a way your mind can’t safely describe.",
+        "You blink once, twice, hoping the world resets. It doesn’t.",
+        "You will never sleep right again after this.",
+        "Something inside you gives way—like a support beam quietly snapping."
+      ];
+      const SAN_SUCCESS_LINES = [
+        "You feel the panic rising—and force it back down where it belongs.",
+        "Your pulse hammers, but training and habit slam the door on the worst of it.",
+        "You catalog the horror, box it up in your head, and move on—for now.",
+        "You swallow hard, steady your hands, and keep working the problem.",
+        "It shakes you, but it doesn’t break you. Not this time."
+      ];
+      const CRIT_SUCCESS_LINES = [
+        "For one clear second, you see it for exactly what it is—and that clarity saves you.",
+        "You ride the spike of terror like a wave, letting it crest and break without taking you under.",
+        "You lock eyes with the horror and something in you just… refuses to yield.",
+        "Your mind files this away with surgical precision: evidence, not nightmare.",
+        "You feel the crack coming—and reinforce it with sheer stubborn will."
+      ];
+      const CRIT_FAILURE_LINES = [
+        "Your mind doesn’t just slip—it plummets, screaming, with no handhold in sight.",
+        "Reality fractures into too many pieces to track; you grab one at random and cling to it.",
+        "The laugh, the sob, the scream—you’re not sure which one comes out, only that it does.",
+        "All your training vanishes; you’re a raw nerve, exposed to something that should not exist.",
+        "A terrible understanding floods in, burning away any hope that this is “just” madness."
+      ];
 
-    const BP_REG_SUCCESS_LINES = [
-      "You keep it together just long enough to realize something inside you quietly broke.",
-      "You manage to function, hands steady, voice level—while something vital in you goes dark.",
-      "You do everything right. You follow the training. And somehow that makes the fracture feel worse.",
-      "You stay on your feet, stay on task, and only later notice you’ve left a piece of yourself behind.",
-      "You hold the line in the moment, but the person who walked into this scene isn’t the one walking out."
-    ];
-    const BP_REG_FAILURE_LINES = [
-      "The fear doesn’t just seep in—it floods, drowning whatever was holding you together.",
-      "Your thoughts scatter like papers in a storm, and you know you’ll never gather them all again.",
-      "You hear yourself make a sound—laugh, sob, gasp—you’re not sure which, only that it isn’t you.",
-      "Something gives way behind your eyes, and the world tilts into a shape you cannot unsee.",
-      "You don’t collapse, but the support beams of your mind groan, crack, and finally give out."
-    ];
-    const BP_CRIT_SUCCESS_LINES = [
-      "You understand exactly what you’re seeing, and that clarity slices something essential out of you.",
-      "You process every detail with perfect, clinical precision—and feel your humanity slip a step behind.",
-      "You lock everything away flawlessly, but the part of you that cared about the lock is gone.",
-      "You master the terror, pin it down, and in doing so trade away the last of your illusions.",
-      "You stay sharp, efficient, unshakable—and realize, with distant curiosity, that you don’t feel much at all."
-    ];
-    const BP_CRIT_FAILURE_LINES = [
-      "Your mind doesn’t just crack—it shatters, and you’re left clutching a single splinter that still feels “real.”",
-      "Every defense fails at once, leaving raw nerve exposed to something that should never touch human thought.",
-      "The world comes apart in too many pieces to track, and you grab onto the wrong one with both hands.",
-      "You feel yourself step off the edge of who you were and start falling, with no idea where the bottom is.",
-      "There is a moment—just one—where you see the truth of it all, and that moment takes the rest of you with it."
-    ];
+      const BP_REG_SUCCESS_LINES = [
+        "You keep it together just long enough to realize something inside you quietly broke.",
+        "You manage to function, hands steady, voice level—while something vital in you goes dark.",
+        "You do everything right. You follow the training. And somehow that makes the fracture feel worse.",
+        "You stay on your feet, stay on task, and only later notice you’ve left a piece of yourself behind.",
+        "You hold the line in the moment, but the person who walked into this scene isn’t the one walking out."
+      ];
+      const BP_REG_FAILURE_LINES = [
+        "The fear doesn’t just seep in—it floods, drowning whatever was holding you together.",
+        "Your thoughts scatter like papers in a storm, and you know you’ll never gather them all again.",
+        "You hear yourself make a sound—laugh, sob, gasp—you’re not sure which, only that it isn’t you.",
+        "Something gives way behind your eyes, and the world tilts into a shape you cannot unsee.",
+        "You don’t collapse, but the support beams of your mind groan, crack, and finally give out."
+      ];
+      const BP_CRIT_SUCCESS_LINES = [
+        "You understand exactly what you’re seeing, and that clarity slices something essential out of you.",
+        "You process every detail with perfect, clinical precision—and feel your humanity slip a step behind.",
+        "You lock everything away flawlessly, but the part of you that cared about the lock is gone.",
+        "You master the terror, pin it down, and in doing so trade away the last of your illusions.",
+        "You stay sharp, efficient, unshakable—and realize, with distant curiosity, that you don’t feel much at all."
+      ];
+      const BP_CRIT_FAILURE_LINES = [
+        "Your mind doesn’t just crack—it shatters, and you’re left clutching a single splinter that still feels “real.”",
+        "Every defense fails at once, leaving raw nerve exposed to something that should never touch human thought.",
+        "The world comes apart in too many pieces to track, and you grab onto the wrong one with both hands.",
+        "You feel yourself step off the edge of who you were and start falling, with no idea where the bottom is.",
+        "There is a moment—just one—where you see the truth of it all, and that moment takes the rest of you with it."
+      ];
 
-    // ---------- 2. Read sheet values ----------
-    const sanValuePath = "system.sanity.value";
-    const sanMaxPath = "system.sanity.max";
-    const bpPath = "system.sanity.currentBreakingPoint";
-    const bpHitPath = "system.sanity.breakingPointHit";
+      // ---------- 2. Read sheet values ----------
+      const sanValuePath = "system.sanity.value";
+      const sanMaxPath = "system.sanity.max";
+      const bpPath = "system.sanity.currentBreakingPoint";
+      const bpHitPath = "system.sanity.breakingPointHit";
 
-    let sanCurrent = Number(
-      foundry.utils.getProperty(actor, sanValuePath) ?? 0
-    );
-    const sanMax = Number(
-      foundry.utils.getProperty(actor, sanMaxPath) ?? 99
-    );
-    const breakingPoint = Number(
-      foundry.utils.getProperty(actor, bpPath)
-    );
+      let sanCurrent = Number(
+        foundry.utils.getProperty(actor, sanValuePath) ?? 0
+      );
+      const sanMax = Number(
+        foundry.utils.getProperty(actor, sanMaxPath) ?? 99
+      );
+      const breakingPoint = Number(
+        foundry.utils.getProperty(actor, bpPath)
+      );
 
-    // ---------- 3. Dialog ----------
-    const sanDialog = await new Promise((resolve) => {
-      new Dialog({
-        title: `SAN Check for ${displayName}`,
-        content: `
+      // ---------- 3. Dialog ----------
+      const sanDialog = await new Promise((resolve) => {
+        new Dialog({
+          title: `SAN Check for ${displayName}`,
+          content: `
           <div style="display:flex;flex-direction:column;gap:8px;">
             <label>SAN source type:
               <select name="sanType">
@@ -1475,241 +1499,241 @@ static async runSanCheckDialogMacro() {
             </label>
           </div>
         `,
-        buttons: {
-          ok: {
-            label: "Roll SAN",
-            callback: (html) => {
-              const success =
-                (html.find('[name="success"]').val() || "0").trim();
-              const failure =
-                (html.find('[name="failure"]').val() || "1d6").trim();
-              const modifier =
-                parseInt(html.find('[name="modifier"]').val(), 10) || 0;
-              const sanType = (
-                html.find('[name="sanType"]').val() || "other"
-              ).trim();
-              const markAdaptation = html
-                .find('[name="markAdaptation"]').is(":checked");
+          buttons: {
+            ok: {
+              label: "Roll SAN",
+              callback: (html) => {
+                const success =
+                  (html.find('[name="success"]').val() || "0").trim();
+                const failure =
+                  (html.find('[name="failure"]').val() || "1d6").trim();
+                const modifier =
+                  parseInt(html.find('[name="modifier"]').val(), 10) || 0;
+                const sanType = (
+                  html.find('[name="sanType"]').val() || "other"
+                ).trim();
+                const markAdaptation = html
+                  .find('[name="markAdaptation"]').is(":checked");
 
-              resolve({
-                success,
-                failure,
-                modifier,
-                sanType,
-                markAdaptation
-              });
-            }
+                resolve({
+                  success,
+                  failure,
+                  modifier,
+                  sanType,
+                  markAdaptation
+                });
+              }
+            },
+            cancel: { label: "Cancel", callback: () => resolve(null) }
           },
-          cancel: { label: "Cancel", callback: () => resolve(null) }
-        },
-        default: "ok"
-      }).render(true);
-    });
+          default: "ok"
+        }).render(true);
+      });
 
-    if (!sanDialog) return;
+      if (!sanDialog) return;
 
-    const successFormula = sanDialog.success || "0";
-    const failureFormula = sanDialog.failure || "1d6";
-    const modifier = Number(sanDialog.modifier || 0);
-    const sanType = sanDialog.sanType || "other";
-    const markAdaptation = !!sanDialog.markAdaptation;
+      const successFormula = sanDialog.success || "0";
+      const failureFormula = sanDialog.failure || "1d6";
+      const modifier = Number(sanDialog.modifier || 0);
+      const sanType = sanDialog.sanType || "other";
+      const markAdaptation = !!sanDialog.markAdaptation;
 
-    // ---------- 4. Roll SAN check ----------
-    const effectiveTarget = Math.max(
-      0,
-      Math.min(sanMax, sanCurrent + modifier)
-    );
+      // ---------- 4. Roll SAN check ----------
+      const effectiveTarget = Math.max(
+        0,
+        Math.min(sanMax, sanCurrent + modifier)
+      );
 
-    const sanRoll = await new Roll("1d100").evaluate({ async: true });
-    const rollTotal = Number(sanRoll.total || 0);
+      const sanRoll = await new Roll("1d100").evaluate({ async: true });
+      const rollTotal = Number(sanRoll.total || 0);
 
-    const isSuccess = rollTotal <= effectiveTarget;
-    const isDouble =
-      rollTotal % 11 === 0 && rollTotal !== 0 && rollTotal !== 100;
-    const isCritSuccess = rollTotal === 1 || (isDouble && isSuccess);
-    const isCritFailure = rollTotal === 100 || (isDouble && !isSuccess);
+      const isSuccess = rollTotal <= effectiveTarget;
+      const isDouble =
+        rollTotal % 11 === 0 && rollTotal !== 0 && rollTotal !== 100;
+      const isCritSuccess = rollTotal === 1 || (isDouble && isSuccess);
+      const isCritFailure = rollTotal === 100 || (isDouble && !isSuccess);
 
-    const lossRoll = await new Roll(
-      isSuccess ? successFormula : failureFormula
-    ).evaluate({ async: true });
+      const lossRoll = await new Roll(
+        isSuccess ? successFormula : failureFormula
+      ).evaluate({ async: true });
 
-    // Show 3D dice if Dice So Nice is active
-    if (game.dice3d) {
-      await game.dice3d.showForRoll(sanRoll, game.user, true);
-    }
-
-    const loss = Math.max(0, Number(lossRoll.total) || 0);
-    const oldSan = sanCurrent;
-    const newSan = Math.max(0, sanCurrent - loss);
-
-    // ---------- 5. Apply SAN + BP flags ----------
-    const updates = { [sanValuePath]: newSan };
-    const hasBP = !Number.isNaN(breakingPoint);
-    const crossedBreaking =
-      hasBP && oldSan > breakingPoint && newSan <= breakingPoint;
-
-    if (hasBP) updates[bpHitPath] = newSan <= breakingPoint;
-    await actor.update(updates);
-
-    // ---------- Helper: adaptation incident ----------
-    async function markAdaptationIncident(actor, sanType, displayName) {
-      if (!actor || !["violence", "helplessness"].includes(sanType)) return;
-
-      const sys = actor.system || actor.data?.system || {};
-      const adaptations = sys.sanity?.adaptations?.[sanType] || {};
-
-      const basePath = `system.sanity.adaptations.${sanType}`;
-      const current1 = !!adaptations.incident1;
-      const current2 = !!adaptations.incident2;
-      const current3 = !!adaptations.incident3;
-
-      let pathToSet = null;
-      if (!current1) pathToSet = `${basePath}.incident1`;
-      else if (!current2) pathToSet = `${basePath}.incident2`;
-      else if (!current3) pathToSet = `${basePath}.incident3`;
-
-      // Already fully adapted
-      if (!pathToSet) {
-        ui.notifications?.info?.(`Already fully adapted to ${sanType}.`);
-        return;
+      // Show 3D dice if Dice So Nice is active
+      if (game.dice3d) {
+        await game.dice3d.showForRoll(sanRoll, game.user, true);
       }
 
-      const beforeCount =
-        (current1 ? 1 : 0) + (current2 ? 1 : 0) + (current3 ? 1 : 0);
+      const loss = Math.max(0, Number(lossRoll.total) || 0);
+      const oldSan = sanCurrent;
+      const newSan = Math.max(0, sanCurrent - loss);
 
-      const updates = {};
-      updates[pathToSet] = true;
+      // ---------- 5. Apply SAN + BP flags ----------
+      const updates = { [sanValuePath]: newSan };
+      const hasBP = !Number.isNaN(breakingPoint);
+      const crossedBreaking =
+        hasBP && oldSan > breakingPoint && newSan <= breakingPoint;
 
+      if (hasBP) updates[bpHitPath] = newSan <= breakingPoint;
       await actor.update(updates);
 
-      const nowInc2 = current2 || pathToSet.endsWith("incident2");
-      const nowInc3 = current3 || pathToSet.endsWith("incident3");
-      const afterCount = beforeCount + 1;
-      const fullyAdapted = true && nowInc2 && nowInc3;
+      // ---------- Helper: adaptation incident ----------
+      async function markAdaptationIncident(actor, sanType, displayName) {
+        if (!actor || !["violence", "helplessness"].includes(sanType)) return;
 
-      ui.notifications?.info?.(
-        `Marked one ${sanType} SAN loss incident (${afterCount}/3).`
-      );
+        const sys = actor.system || actor.data?.system || {};
+        const adaptations = sys.sanity?.adaptations?.[sanType] || {};
 
-      if (fullyAdapted) {
-        const adaptUpdates = {};
-        adaptUpdates[`${basePath}.isAdapted`] = true;
-        await actor.update(adaptUpdates).catch(() => {});
+        const basePath = `system.sanity.adaptations.${sanType}`;
+        const current1 = !!adaptations.incident1;
+        const current2 = !!adaptations.incident2;
+        const current3 = !!adaptations.incident3;
 
-        const label =
-          sanType === "violence"
-            ? "ADAPTED TO VIOLENCE"
-            : "ADAPTED TO HELPLESSNESS";
+        let pathToSet = null;
+        if (!current1) pathToSet = `${basePath}.incident1`;
+        else if (!current2) pathToSet = `${basePath}.incident2`;
+        else if (!current3) pathToSet = `${basePath}.incident3`;
+
+        // Already fully adapted
+        if (!pathToSet) {
+          ui.notifications?.info?.(`Already fully adapted to ${sanType}.`);
+          return;
+        }
+
+        const beforeCount =
+          (current1 ? 1 : 0) + (current2 ? 1 : 0) + (current3 ? 1 : 0);
+
+        const updates = {};
+        updates[pathToSet] = true;
+
+        await actor.update(updates);
+
+        const nowInc2 = current2 || pathToSet.endsWith("incident2");
+        const nowInc3 = current3 || pathToSet.endsWith("incident3");
+        const afterCount = beforeCount + 1;
+        const fullyAdapted = true && nowInc2 && nowInc3;
 
         ui.notifications?.info?.(
-          `${displayName} is now ${label}.`
+          `Marked one ${sanType} SAN loss incident (${afterCount}/3).`
         );
 
-        await ChatMessage.create({
-          user: game.user.id,
-          speaker: ChatMessage.getSpeaker({ actor }),
-          content: `<p><b>${displayName}</b> has become <b>${label}</b>.</p>`
-        });
-      }
-    }
+        if (fullyAdapted) {
+          const adaptUpdates = {};
+          adaptUpdates[`${basePath}.isAdapted`] = true;
+          await actor.update(adaptUpdates).catch(() => {});
 
-    // ---------- 5a. Adaptation ----------
-    if (markAdaptation) {
-      if (sanType !== "violence" && sanType !== "helplessness") {
-        ui.notifications?.warn?.(
-          "Adaptation is checked, but SAN source is not Violence or Helplessness. Change the dropdown if you want to record adaptation."
-        );
-      } else {
-        const shouldAdapt = !isSuccess || (isSuccess && loss > 0);
+          const label =
+            sanType === "violence"
+              ? "ADAPTED TO VIOLENCE"
+              : "ADAPTED TO HELPLESSNESS";
 
-        if (shouldAdapt) {
-          await markAdaptationIncident(actor, sanType, displayName);
+          ui.notifications?.info?.(
+            `${displayName} is now ${label}.`
+          );
+
+          await ChatMessage.create({
+            user: game.user.id,
+            speaker: ChatMessage.getSpeaker({ actor }),
+            content: `<p><b>${displayName}</b> has become <b>${label}</b>.</p>`
+          });
         }
       }
-    }
 
-    // ---------- 5b. Advance Breaking Point if crossed ----------
-    if (hasBP && crossedBreaking) {
-      const powValue = Number(
-        foundry.utils.getProperty(
-          actor,
-          "system.statistics.pow.value"
-        ) ?? 0
-      );
-      const newBP = Math.max(newSan - powValue, 0);
-      await actor.update({ "system.sanity.currentBreakingPoint": newBP });
-    }
+      // ---------- 5a. Adaptation ----------
+      if (markAdaptation) {
+        if (sanType !== "violence" && sanType !== "helplessness") {
+          ui.notifications?.warn?.(
+            "Adaptation is checked, but SAN source is not Violence or Helplessness. Change the dropdown if you want to record adaptation."
+          );
+        } else {
+          const shouldAdapt = !isSuccess || (isSuccess && loss > 0);
 
-    // ---------- 6. GM debug ----------
-    if (game.user.isGM) {
-      console.log(`SAN CHECK for ${displayName}`);
-      console.log(
-        `  Roll: ${rollTotal} vs target SAN ${sanCurrent} ${
-          modifier >= 0 ? `+${modifier}` : modifier
-        } => ${effectiveTarget}`
-      );
-      console.log(
-        `  Result: ${isSuccess ? "SUCCESS" : "FAILURE"}${
-          isCritSuccess ? " (CRIT SUCCESS)" : ""
-        }${isCritFailure ? " (CRIT FAILURE)" : ""}`
-      );
-      console.log(
-        `  Loss: ${loss} (${isSuccess ? successFormula : failureFormula})`
-      );
-      console.log(`  New SAN: ${newSan}/${sanMax}`);
-      if (hasBP) {
-        console.log(
-          `  Breaking Point (old): ${breakingPoint} ${
-            crossedBreaking ? "(CROSSED!)" : ""
-          }`
-        );
+          if (shouldAdapt) {
+            await markAdaptationIncident(actor, sanType, displayName);
+          }
+        }
       }
-      if (loss >= 5) {
-        console.log(
-          `  TEMPORARY INSANITY TRIGGERED (loss ${loss} SAN in a single check).`
+
+      // ---------- 5b. Advance Breaking Point if crossed ----------
+      if (hasBP && crossedBreaking) {
+        const powValue = Number(
+          foundry.utils.getProperty(
+            actor,
+            "system.statistics.pow.value"
+          ) ?? 0
         );
+        const newBP = Math.max(newSan - powValue, 0);
+        await actor.update({ "system.sanity.currentBreakingPoint": newBP });
       }
-    }
 
-    // ---------- 7. Player-facing narrative + TEMPORARY INSANITY ----------
-    const hasBP2 = hasBP;
-    let publicText = "";
-    if (hasBP2 && crossedBreaking) {
-      let bpPool;
-      if (isCritSuccess) bpPool = BP_CRIT_SUCCESS_LINES;
-      else if (isCritFailure) bpPool = BP_CRIT_FAILURE_LINES;
-      else if (isSuccess) bpPool = BP_REG_SUCCESS_LINES;
-      else bpPool = BP_REG_FAILURE_LINES;
+      // ---------- 6. GM debug ----------
+      if (game.user.isGM) {
+        console.log(`SAN CHECK for ${displayName}`);
+        console.log(
+          `  Roll: ${rollTotal} vs target SAN ${sanCurrent} ${
+            modifier >= 0 ? `+${modifier}` : modifier
+          } => ${effectiveTarget}`
+        );
+        console.log(
+          `  Result: ${isSuccess ? "SUCCESS" : "FAILURE"}${
+            isCritSuccess ? " (CRIT SUCCESS)" : ""
+          }${isCritFailure ? " (CRIT FAILURE)" : ""}`
+        );
+        console.log(
+          `  Loss: ${loss} (${isSuccess ? successFormula : failureFormula})`
+        );
+        console.log(`  New SAN: ${newSan}/${sanMax}`);
+        if (hasBP) {
+          console.log(
+            `  Breaking Point (old): ${breakingPoint} ${
+              crossedBreaking ? "(CROSSED!)" : ""
+            }`
+          );
+        }
+        if (loss >= 5) {
+          console.log(
+            `  TEMPORARY INSANITY TRIGGERED (loss ${loss} SAN in a single check).`
+          );
+        }
+      }
 
-      const bpLine = pick(bpPool);
-      publicText = `
+      // ---------- 7. Player-facing narrative + TEMPORARY INSANITY ----------
+      const hasBP2 = hasBP;
+      let publicText = "";
+      if (hasBP2 && crossedBreaking) {
+        let bpPool;
+        if (isCritSuccess) bpPool = BP_CRIT_SUCCESS_LINES;
+        else if (isCritFailure) bpPool = BP_CRIT_FAILURE_LINES;
+        else if (isSuccess) bpPool = BP_REG_SUCCESS_LINES;
+        else bpPool = BP_REG_FAILURE_LINES;
+
+        const bpLine = pick(bpPool);
+        publicText = `
           <p><b>${displayName}</b>: ${bpLine}</p>
           <p><b>BREAKING POINT REACHED.</b></p>
           <p style="font-size:15px; opacity:0.9%;">
             <b>HANDLER / PLAYER NOTE:</b> Assign or discuss a new disorder appropriate to this episode.
           </p>
         `;
-    } else {
-      let line, tag;
-      if (isCritSuccess) {
-        line = pick(CRIT_SUCCESS_LINES);
-        tag = "CRITICAL SAN SUCCESS";
-      } else if (isCritFailure) {
-        line = pick(CRIT_FAILURE_LINES);
-        tag = "CRITICAL SAN FAILURE";
-      } else if (isSuccess) {
-        line = pick(SAN_SUCCESS_LINES);
-        tag = "SAN SUCCESS";
       } else {
-        line = pick(SAN_FAILURE_LINES);
-        tag = "SAN FAILURE";
+        let line, tag;
+        if (isCritSuccess) {
+          line = pick(CRIT_SUCCESS_LINES);
+          tag = "CRITICAL SAN SUCCESS";
+        } else if (isCritFailure) {
+          line = pick(CRIT_FAILURE_LINES);
+          tag = "CRITICAL SAN FAILURE";
+        } else if (isSuccess) {
+          line = pick(SAN_SUCCESS_LINES);
+          tag = "SAN SUCCESS";
+        } else {
+          line = pick(SAN_FAILURE_LINES);
+          tag = "SAN FAILURE";
+        }
+        publicText = `<p><b>${displayName}</b>: ${line}</p><p><b>${tag}</b>.</p>`;
       }
-      publicText = `<p><b>${displayName}</b>: ${line}</p><p><b>${tag}</b>.</p>`;
-    }
 
-    // ---- TEMPORARY INSANITY: RAW = 5+ SAN lost in a single roll ----
-    if (loss >= 5) {
-      publicText += `
+      // ---- TEMPORARY INSANITY: RAW = 5+ SAN lost in a single roll ----
+      if (loss >= 5) {
+        publicText += `
         <p style="margin-top: 8px;">
           <b>TEMPORARY INSANITY TRIGGERED:</b> ${displayName} has lost
           <b>${loss}</b> SAN from this single shock. For a short time, the Agent is not thinking clearly.
@@ -1722,20 +1746,20 @@ static async runSanCheckDialogMacro() {
           end the episode early.
         </p>
       `;
+      }
+
+      await ChatMessage.create({
+        user: game.user.id,
+        speaker: ChatMessage.getSpeaker({ actor }),
+        content: publicText
+      });
+
+      // MailSystem handles its own refresh; nothing else to do here.
+    } catch (err) {
+      console.error("Delta Green UI | SAN macro error:", err);
+      ui.notifications.error("Error running SAN check.");
     }
-
-    await ChatMessage.create({
-      user: game.user.id,
-      speaker: ChatMessage.getSpeaker({ actor }),
-      content: publicText
-    });
-
-    // MailSystem handles its own refresh; nothing else to do here.
-  } catch (err) {
-    console.error("Delta Green UI | SAN macro error:", err);
-    ui.notifications.error("Error running SAN check.");
   }
-}
 
   /* ------------------------------------------------------------------------ */
   /* CHAT / ROLL DISPLAY                                                      */
@@ -2338,3 +2362,26 @@ static async runSanCheckDialogMacro() {
     }
   }
 }
+// Global delegated handler for the SHOW% / HIDE% toggle button
+$(document).on("click", "#dg-toggle-skill-numbers", (event) => {
+  event.preventDefault();
+
+  // Flip the flag
+  MailSystem.showSkillNumbers = !MailSystem.showSkillNumbers;
+
+  const $btn = $(event.currentTarget);
+
+  // Update button text & a helper class so you can style it if you want
+  if (MailSystem.showSkillNumbers) {
+    $btn.text("SHOW %");
+    $btn.removeClass("dg-skillnumbers-hidden").addClass("dg-skillnumbers-visible");
+  } else {
+    $btn.text("HIDE %");
+    $btn.removeClass("dg-skillnumbers-visible").addClass("dg-skillnumbers-hidden");
+  }
+
+  // Rebuild the buttons so they reflect the new mode
+  MailSystem.refreshSkillHotbar();
+  MailSystem.refreshTypedSkillButtons();
+  MailSystem.refreshStatButtons?.();
+});
