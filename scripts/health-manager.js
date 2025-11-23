@@ -1,4 +1,4 @@
-// health-system.js
+// health-manager.js
 // RAW-focused health + willpower helper for Delta Green in Foundry.
 // - Shows HP / WP for the controlled token (or user's assigned character)
 // - Buttons for core RAW healing routines
@@ -21,6 +21,9 @@ export class HealthManager {
     // Build the panel after the CRT UI DOM exists
     this._createPanel();
     this.refresh();
+
+    // Make sure initial visibility matches the current view
+    this.showForView(DeltaGreenUI.currentView || null);
 
     // Keep panel in sync with token / actor changes
     Hooks.on("controlToken", () => this.refresh());
@@ -52,7 +55,8 @@ export class HealthManager {
 
     const wrapper = document.createElement("section");
     wrapper.id = this.panelId;
-    wrapper.classList.add("dg-section", "dg-health-panel");
+    // IMPORTANT: start hidden so it doesn't appear on every view
+    wrapper.classList.add("dg-section", "dg-health-panel", "hidden");
 
     wrapper.innerHTML = `
 <!-- health-view.html -->
@@ -354,8 +358,6 @@ export class HealthManager {
     </div>   <!-- /.dg-health-layout -->
   </div>
 </div>
-
-
     `;
 
     container.appendChild(wrapper);
@@ -369,11 +371,6 @@ export class HealthManager {
 
       const action = btn.dataset.action;
       if (!action) return;
-
-      if (action === "close") {
-        html.classList.add("hidden");
-        return;
-      }
 
       const actor = this._getCurrentActor();
       if (!actor) {
@@ -492,13 +489,15 @@ export class HealthManager {
 
     const actor = this._getCurrentActor();
     const nameField = panel.querySelector("[data-field='actor-name']");
+    const inlineName = panel.querySelector("[data-field='actor-name-inline']");
     const hpVal = panel.querySelector("[data-field='hp-value']");
     const hpMax = panel.querySelector("[data-field='hp-max']");
     const wpVal = panel.querySelector("[data-field='wp-value']");
     const wpMax = panel.querySelector("[data-field='wp-max']");
 
     if (!actor) {
-      if (nameField) nameField.textContent = "—";
+      if (nameField) nameField.textContent = "LOGGED IN: NO AGENT SELECTED";
+      if (inlineName) inlineName.textContent = "—";
       if (hpVal) hpVal.textContent = "—";
       if (hpMax) hpMax.textContent = "—";
       if (wpVal) wpVal.textContent = "—";
@@ -509,7 +508,9 @@ export class HealthManager {
     const { hpCurrent, hpMaximum } = this._getHpData(actor);
     const { wpCurrent, wpMaximum } = this._getWpData(actor);
 
-    if (nameField) nameField.textContent = actor.name ?? "—";
+    const actorName = actor.name ?? "—";
+    if (nameField) nameField.textContent = `LOGGED IN: ${actorName}`;
+    if (inlineName) inlineName.textContent = actorName;
     if (hpVal) hpVal.textContent = hpCurrent ?? "—";
     if (hpMax) hpMax.textContent = hpMaximum ?? "—";
     if (wpVal) wpVal.textContent = wpCurrent ?? "—";
@@ -522,12 +523,28 @@ export class HealthManager {
     panel.classList.toggle("hidden");
   }
 
+  /**
+   * Central place to decide when the panel is visible:
+   * - view === "health"  -> show
+   * - anything else      -> hide
+   */
+  static showForView(view) {
+    const panel = document.getElementById(this.panelId);
+    if (!panel) return;
+
+    if (view === "health") {
+      panel.classList.remove("hidden");
+    } else {
+      panel.classList.add("hidden");
+    }
+  }
+
   /* --- HP data paths ------------------------------------------------------ */
 
   static _getHpData(actor) {
     const candidates = [
       { cur: "system.health.value", max: "system.health.max" },
-        ];
+    ];
 
     for (const c of candidates) {
       const cur = foundry.utils.getProperty(actor, c.cur);
