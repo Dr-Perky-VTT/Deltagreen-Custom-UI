@@ -944,9 +944,11 @@ Hooks.on("renderChatMessageHTML", (message, html, data) => {
 
       this.loadLastEntries();
       this._kickDeferredRefresh();
-      // Keep status + hotbar in sync with actual stats
-      this.updateTopStatusBar();
-      this.refreshBottomHotbar();
+
+      // Actor HUD updates (top bar + hotbar) go through MailSystem, debounced
+      if (actor && MailSystem && typeof MailSystem._scheduleActorRefresh === "function") {
+        MailSystem._scheduleActorRefresh(actor);
+      }
     });
 
     Hooks.on("deleteActor", () => {
@@ -954,10 +956,18 @@ Hooks.on("renderChatMessageHTML", (message, html, data) => {
       this._kickDeferredRefresh();
     });
 
-    // Changing controlled token should also update status + bottom bar
-    Hooks.on("controlToken", () => {
-      this.updateTopStatusBar();
-      this.refreshBottomHotbar();
+    // Changing controlled token should schedule a *single* debounced refresh
+    Hooks.on("controlToken", (token, controlled) => {
+      if (!this.isInterfaceActive()) return;
+      if (!controlled || !token?.actor) return;
+
+      if (MailSystem && typeof MailSystem._scheduleActorRefresh === "function") {
+        MailSystem._scheduleActorRefresh(token.actor);
+      } else {
+        // Fallback if MailSystem is missing or old
+        this.updateTopStatusBar();
+        this.refreshBottomHotbar();
+      }
     });
   }
 
@@ -1295,7 +1305,7 @@ static openInterface() {
         }
       });
 
-      container.appendChild(li);
+      container.append(li);
     }
   }
 
@@ -2622,8 +2632,7 @@ static updateAudioTicker() {
     setTimeout(() => {
       this.loadLastEntries();
       this.forceDisplayLastEntries();
-      this.updateTopStatusBar();
-      this.refreshBottomHotbar();
+      // Actor HUD (status bar + hotbar) is now handled by MailSystem._scheduleActorRefresh
     }, 500);
   }
 

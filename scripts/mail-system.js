@@ -13,7 +13,7 @@ export class MailSystem {
   static _actorRefreshTimeout = null;
   static _pendingActorRefreshActor = null;
   static _loadMessagesTimeout = null;
-
+  static _lastActorId = null;
   /* ------------------------------------------------------------------------ */
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
@@ -2397,31 +2397,39 @@ Hooks.on("controlToken", (token, controlled) => {
   /* BATCHED REFRESH HELPERS                                                  */
   /* ------------------------------------------------------------------------ */
 
-  static _scheduleActorRefresh(actor) {
-    const current = this._getCurrentActor();
-    if (!current || actor?.id !== current.id) return;
+static _scheduleActorRefresh(actor) {
+  const current = this._getCurrentActor();
+  if (!current || actor?.id !== current.id) return;
 
-    this._pendingActorRefreshActor = actor || current;
-
-    if (this._actorRefreshTimeout) return;
-
-    this._actorRefreshTimeout = setTimeout(() => {
-      try {
-        const a = this._pendingActorRefreshActor || this._getCurrentActor();
-        if (!a) return;
-        this.refreshSkillHotbar();
-        this.refreshTypedSkillButtons();
-        this.refreshWeaponHotbar();
-        this.refreshStatButtons();
-        this.refreshHpWpPanel(a);
-        this._refreshSanButtonStatus(a);
-        this._updateMailHeaderActorName(a);
-      } finally {
-        this._actorRefreshTimeout = null;
-        this._pendingActorRefreshActor = null;
-      }
-    }, 150);
+  // If it's the same actor we *just* refreshed, don't bother
+  if (this._lastActorId === current.id && !this._actorRefreshTimeout) {
+    return;
   }
+
+  this._pendingActorRefreshActor = actor || current;
+
+  if (this._actorRefreshTimeout) return;
+
+  this._actorRefreshTimeout = setTimeout(() => {
+    try {
+      const a = this._pendingActorRefreshActor || this._getCurrentActor();
+      if (!a) return;
+
+      this._lastActorId = a.id; // remember who we refreshed for
+
+      this.refreshSkillHotbar();
+      this.refreshTypedSkillButtons();
+      this.refreshWeaponHotbar();
+      this.refreshStatButtons();
+      this.refreshHpWpPanel(a);
+      this._refreshSanButtonStatus(a);
+      this._updateMailHeaderActorName(a);
+    } finally {
+      this._actorRefreshTimeout = null;
+      this._pendingActorRefreshActor = null;
+    }
+  }, 200); 
+}
 
   static requestLoadMessages() {
     if (this._loadMessagesTimeout) return;
