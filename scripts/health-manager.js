@@ -3,8 +3,7 @@
 // - Shows HP / WP for the controlled token (or user's assigned character)
 // - Buttons for core RAW healing routines
 // - Generic helpers for Lethality, fire, cold, suffocation, etc.
-
-import { DeltaGreenUI } from "./delta-green-ui.js";
+// - Simple access to physical flags: First Aid Attempted, Exhausted, Exhaustion Penalty, Wounds
 
 export class HealthManager {
   static initialized = false;
@@ -18,26 +17,19 @@ export class HealthManager {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Build the panel after the CRT UI DOM exists
+    // Build the panel and sync with current actor
     this._createPanel();
     this.refresh();
 
-    // Make sure initial visibility matches the current view
-    this.showForView(DeltaGreenUI.currentView || null);
+    // Start hidden; DeltaGreenUI will call showForView(this.currentView)
+    this.showForView(null);
 
     // Keep panel in sync with token / actor changes
     Hooks.on("controlToken", () => this.refresh());
-    Hooks.on("updateActor", (actor, data, options, userId) => {
-      if (game.user.id === userId) this.refresh();
+    Hooks.on("updateActor", (actor) => {
+      const current = this._getCurrentActor();
+      if (current && actor.id === current.id) this.refresh();
     });
-
-    // Optional: if you ever add a subpanel registry, this will hook into it
-    if (DeltaGreenUI?.registerSubpanel) {
-      DeltaGreenUI.registerSubpanel("health", {
-        label: "Health/WP",
-        toggle: () => this.toggle()
-      });
-    }
   }
 
   /* ------------------------------------------------------------------------ */
@@ -94,7 +86,7 @@ export class HealthManager {
 
       <!-- TWO-COLUMN BODY -->
       <div class="dg-health-columns">
-        <!-- LEFT COLUMN: HEALING RAW -->
+        <!-- LEFT COLUMN: HEALING RAW + FLAGS -->
         <div class="dg-health-column dg-health-left">
           <div class="dg-health-section">
             <div class="dg-section-subtitle">HEALING (RAW BUTTONS)</div>
@@ -220,6 +212,55 @@ export class HealthManager {
                 >
                   COMPLICATIONS TICK (1D4 DMG)
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- INJURY / EXHAUSTION FLAGS -->
+          <div class="dg-health-section">
+            <div class="dg-section-subtitle">INJURY &amp; EXHAUSTION STATUS</div>
+
+            <div class="dg-health-flags">
+              <div class="dg-health-flag-row">
+                <label class="dg-label">
+                  <input
+                    type="checkbox"
+                    class="dg-health-flag-checkbox"
+                    data-path="system.physical.firstAidAttempted"
+                  />
+                  FIRST AID ATTEMPTED
+                </label>
+              </div>
+
+              <div class="dg-health-flag-row">
+                <label class="dg-label">
+                  <input
+                    type="checkbox"
+                    class="dg-health-flag-checkbox"
+                    data-path="system.physical.exhausted"
+                  />
+                  EXHAUSTED
+                </label>
+
+                <div class="dg-health-exhaustion-penalty">
+                  <label class="dg-label">Exhaustion Penalty</label>
+                  <input
+                    type="number"
+                    class="dg-health-number-input"
+                    data-path="system.physical.exhaustedPenalty"
+                    min="-99"
+                    max="0"
+                  />
+                </div>
+              </div>
+
+              <div class="dg-health-wounds-block">
+                <label class="dg-label">Wounds / Injury Notes</label>
+                <textarea
+                  class="dg-health-wounds-textarea"
+                  data-path="system.physical.wounds"
+                  rows="3"
+                ></textarea>
               </div>
             </div>
           </div>
@@ -355,13 +396,27 @@ export class HealthManager {
           </div>
         </div>
       </div> <!-- /.dg-health-columns -->
-       <div class="dg-mail-skillbar dg-mail-statbar">	   
-       <button class="dg-button dg-skill-roll-btn" data-skill="first_aid">FIRST AID</button>
-       <button class="dg-button dg-skill-roll-btn" data-skill="medicine">MEDICINE</button>
-	   <button class="dg-button dg-skill-roll-btn" data-skill="pharmacy">PHARMACY</button>
-	   <button class="dg-button dg-skill-roll-btn" data-skill="surgery">SURGERY</button>
-	   <button class="dg-button dg-stat-roll-btn" data-stat="con">CONSTITUTION</button>
-	   </div></div>   <!-- /.dg-health-layout -->
+
+      <!-- STAT / SKILL BAR FOR HEALING-RELATED ROLLS -->
+      <div class="dg-mail-skillbar dg-mail-statbar">
+        <button class="dg-button dg-skill-roll-btn" data-skill="first_aid">
+          FIRST AID
+        </button>
+        <button class="dg-button dg-skill-roll-btn" data-skill="medicine">
+          MEDICINE
+        </button>
+        <button class="dg-button dg-skill-roll-btn" data-skill="pharmacy">
+          PHARMACY
+        </button>
+        <button class="dg-button dg-skill-roll-btn" data-skill="surgery">
+          SURGERY
+        </button>
+        <button class="dg-button dg-stat-roll-btn" data-stat="con">
+          CONSTITUTION
+        </button>
+      </div>
+
+    </div>   <!-- /.dg-health-layout -->
   </div>
 </div>
     `;
@@ -371,6 +426,7 @@ export class HealthManager {
   }
 
   static _activateListeners(html) {
+    // Button actions for healing / damage / WP / lethality
     html.addEventListener("click", async (ev) => {
       const btn = ev.target.closest("button");
       if (!btn) return;
@@ -475,6 +531,47 @@ export class HealthManager {
           break;
       }
     });
+
+    // Changes to checkboxes / number inputs / textarea for physical flags
+    html.addEventListener("change", async (ev) => {
+      const target = ev.target;
+      if (!target) return;
+
+      const path = target.dataset?.path;
+      if (!path) return;
+
+      const actor = this._getCurrentActor();
+      if (!actor) {
+        ui.notifications?.warn("No controlled token / actor found.");
+        return;
+      }
+
+      let value;
+      if (target.type === "checkbox") {
+        value = target.checked;
+      } else if (target.type === "number") {
+        value = Number(target.value || 0);
+        if (Number.isNaN(value)) value = 0;
+      } else {
+        // textarea / text
+        value = target.value;
+      }
+
+      const updates = {};
+      updates[path] = value;
+
+      try {
+        await actor.update(updates);
+      } catch (err) {
+        console.error("Delta Green UI | HealthManager flag update error:", err);
+        ui.notifications?.error("Error updating physical status.");
+      }
+
+      // If exhausted flag changed, re-sync penalty enabled/disabled
+      if (path === "system.physical.exhausted") {
+        this.refresh();
+      }
+    });
   }
 
   /* ------------------------------------------------------------------------ */
@@ -501,6 +598,19 @@ export class HealthManager {
     const wpVal = panel.querySelector("[data-field='wp-value']");
     const wpMax = panel.querySelector("[data-field='wp-max']");
 
+    const faCheckbox = panel.querySelector(
+      'input.dg-health-flag-checkbox[data-path="system.physical.firstAidAttempted"]'
+    );
+    const exCheckbox = panel.querySelector(
+      'input.dg-health-flag-checkbox[data-path="system.physical.exhausted"]'
+    );
+    const exPenaltyInput = panel.querySelector(
+      'input.dg-health-number-input[data-path="system.physical.exhaustedPenalty"]'
+    );
+    const woundsTextarea = panel.querySelector(
+      '.dg-health-wounds-textarea[data-path="system.physical.wounds"]'
+    );
+
     if (!actor) {
       if (nameField) nameField.textContent = "LOGGED IN: NO AGENT SELECTED";
       if (inlineName) inlineName.textContent = "—";
@@ -508,6 +618,15 @@ export class HealthManager {
       if (hpMax) hpMax.textContent = "—";
       if (wpVal) wpVal.textContent = "—";
       if (wpMax) wpMax.textContent = "—";
+
+      if (faCheckbox) faCheckbox.checked = false;
+      if (exCheckbox) exCheckbox.checked = false;
+      if (exPenaltyInput) {
+        exPenaltyInput.value = "";
+        exPenaltyInput.disabled = true;
+      }
+      if (woundsTextarea) woundsTextarea.value = "";
+
       return;
     }
 
@@ -521,6 +640,26 @@ export class HealthManager {
     if (hpMax) hpMax.textContent = hpMaximum ?? "—";
     if (wpVal) wpVal.textContent = wpCurrent ?? "—";
     if (wpMax) wpMax.textContent = wpMaximum ?? "—";
+
+    const phys = actor.system?.physical ?? {};
+
+    if (faCheckbox) {
+      faCheckbox.checked = !!phys.firstAidAttempted;
+    }
+
+    const exhausted = !!phys.exhausted;
+    if (exCheckbox) {
+      exCheckbox.checked = exhausted;
+    }
+    if (exPenaltyInput) {
+      const penalty = phys.exhaustedPenalty ?? 0;
+      exPenaltyInput.value = penalty;
+      exPenaltyInput.disabled = !exhausted;
+    }
+
+    if (woundsTextarea) {
+      woundsTextarea.value = phys.wounds ?? "";
+    }
   }
 
   static toggle() {

@@ -1,5 +1,3 @@
-
-
 // mail-system.js
 import { DeltaGreenUI } from "./delta-green-ui.js";
 
@@ -7,6 +5,7 @@ export class MailSystem {
   static messages = [];
   static currentModifier = 0; // one-shot modifier: -40, -20, 0, +20, +40
   static showSkillNumbers = true;
+
   /* ------------------------------------------------------------------------ */
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
@@ -464,80 +463,92 @@ export class MailSystem {
   }
 
   // Color SAN CHECK based on SAN vs Breaking Point
-// UPDATED: SAN status respects GM "allowSanNumbers" setting
-static _refreshSanButtonStatus(actor = null) {
-  try {
-    const current = actor || this._getCurrentActor();
-    const $btn = $("#dg-san-check-btn");
-    if (!current || !$btn.length) return;
+  // UPDATED: SAN status respects GM "allowSanNumbers" setting and won't crash if missing
+  static _refreshSanButtonStatus(actor = null) {
+    try {
+      const current = actor || this._getCurrentActor();
+      const $btn = $("#dg-san-check-btn");
+      if (!current || !$btn.length) return;
 
-    const sanCurrent = Number(
-      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
-    );
-    const sanMax = Number(
-      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
-    );
-    const breakingPoint = Number(
-      foundry.utils.getProperty(
-        current,
-        "system.sanity.currentBreakingPoint"
-      )
-    );
+      const sanCurrent = Number(
+        foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+      );
+      const sanMax = Number(
+        foundry.utils.getProperty(current, "system.sanity.max") ?? 99
+      );
+      const breakingPoint = Number(
+        foundry.utils.getProperty(
+          current,
+          "system.sanity.currentBreakingPoint"
+        )
+      );
 
-    // GM-only world setting: can SAN ever show numbers?
-    const allowSanNumbers = game.settings.get(
-      "deltagreen-custom-ui",
-      "allowSanNumbers"
-    );
+      // GM-only world setting: can SAN ever show numbers?
+      // Guarded so it won't throw if the setting doesn't exist.
+      let allowSanNumbers = false;
+      const settingKey = "deltagreen-custom-ui.allowSanNumbers";
+      try {
+        if (game.settings?.settings?.has?.(settingKey)) {
+          allowSanNumbers = game.settings.get(
+            "deltagreen-custom-ui",
+            "allowSanNumbers"
+          );
+        }
+      } catch (e) {
+        console.warn(
+          "Delta Green UI | allowSanNumbers setting missing; defaulting to label-only SAN.",
+          e
+        );
+      }
 
-    // Reset classes
-    $btn.removeClass("dg-san-safe dg-san-warn dg-san-bad");
+      // Reset classes
+      $btn.removeClass("dg-san-safe dg-san-warn dg-san-bad");
 
-    // If we don't have sane data, just show unknown
-    if (
-      !Number.isFinite(sanCurrent) ||
-      !Number.isFinite(breakingPoint) ||
-      breakingPoint <= 0
-    ) {
-      $btn.text("SAN — STATUS UNKNOWN");
-      return;
+      // If we don't have sane data, just show unknown
+      if (
+        !Number.isFinite(sanCurrent) ||
+        !Number.isFinite(breakingPoint) ||
+        breakingPoint <= 0
+      ) {
+        $btn.text("SAN — STATUS UNKNOWN");
+        return;
+      }
+
+      const ratio = sanCurrent / breakingPoint;
+
+      let label;
+      let cls;
+
+      if (ratio >= 1.5) {
+        label = "GROUNDED";
+        cls = "dg-san-safe";
+      } else if (ratio >= 1.1) {
+        label = "STABLE";
+        cls = "dg-san-safe";
+      } else if (ratio >= 0.8) {
+        label = "FRAYED";
+        cls = "dg-san-warn";
+      } else if (ratio >= 0.5) {
+        label = "UNRAVELLING";
+        cls = "dg-san-warn";
+      } else {
+        label = "COMPROMISED";
+        cls = "dg-san-bad";
+      }
+
+      $btn.addClass(cls);
+
+      // If GM allows numbers, prefix the label with current SAN %.
+      // Otherwise we keep it fully vibe-based.
+      if (allowSanNumbers && Number.isFinite(sanCurrent)) {
+        $btn.text(`SAN ${sanCurrent}% — ${label}`);
+      } else {
+        $btn.text(`SAN: ${label}`);
+      }
+    } catch (err) {
+      console.error("Delta Green UI | _refreshSanButtonStatus error:", err);
     }
-
-    const ratio = sanCurrent / breakingPoint;
-
-    let label;
-    let cls;
-
-    if (ratio >= 1.5) {
-      label = "GROUNDED";
-      cls = "dg-san-safe";
-    } else if (ratio >= 1.1) {
-      label = "STABLE";
-      cls = "dg-san-safe";
-    } else if (ratio >= 0.8) {
-      label = "FRAYED";
-      cls = "dg-san-warn";
-    } else if (ratio >= 0.5) {
-      label = "UNRAVELLING";
-      cls = "dg-san-warn";
-    } else {
-      label = "COMPROMISED";
-      cls = "dg-san-bad";
-    }
-
-    $btn.addClass(cls);
-
-    // If GM allows numbers, prefix the label with current SAN %.
-    // Otherwise we keep it fully vibe-based.
-    if (allowSanNumbers && Number.isFinite(sanCurrent)) {
-      $btn.text(`SAN ${sanCurrent}% — ${label}`);
-    } else {
-      $btn.text(`SAN: ${label}`);
-    }
-  } catch (err) {
-    console.error("Delta Green UI | _refreshSanButtonStatus error:", err);
   }
-}
 
   // Inject "LOGGED IN: Agent X" into the mail header
   static _updateMailHeaderActorName(actor = null) {
@@ -580,75 +591,74 @@ static _refreshSanButtonStatus(actor = null) {
     }
   }
 
-// UPDATED: stat buttons obey MailSystem.showSkillNumbers
-// UPDATED: stat buttons obey MailSystem.showSkillNumbers and show % (x5)
-static refreshStatButtons() {
-  const actor = this._getCurrentActor();
-  const showNums = MailSystem.showSkillNumbers;
+  // UPDATED: stat buttons obey MailSystem.showSkillNumbers and show % (x5)
+  static refreshStatButtons() {
+    const actor = this._getCurrentActor();
+    const showNums = MailSystem.showSkillNumbers;
 
-  $(".dg-stat-roll-btn").each((_, el) => {
-    const $btn = $(el);
-    const key = $btn.data("stat"); // e.g. "STR", "CON", etc.
+    $(".dg-stat-roll-btn").each((_, el) => {
+      const $btn = $(el);
+      const key = $btn.data("stat"); // e.g. "STR", "CON", etc.
 
-    if (!actor || !key) {
-      $btn.hide();
-      return;
-    }
-
-    // Try a few common roots so this is resilient to your system schema
-    const statsRoot =
-      actor.system?.stats ||
-      actor.system?.statistics ||
-      actor.system?.characteristics ||
-      actor.system?.attributes ||
-      {};
-
-    // Try key, lower, upper so "str" / "STR" both work
-    const statObj =
-      statsRoot[key] ||
-      statsRoot[key.toLowerCase?.()] ||
-      statsRoot[key.toUpperCase?.()];
-
-    const rawVal = statObj?.value ?? statObj?.score ?? statObj;
-    const val = Number(rawVal);
-
-    // If we can't get a numeric value, just hide the button
-    if (!statObj || Number.isNaN(val)) {
-      $btn.hide();
-      return;
-    }
-
-    // Cache base label once so we don't keep appending numbers
-    if (!$btn.data("baseLabel")) {
-      const existing = ($btn.text() || "").toString().trim();
-      const baseLabel = existing || key.toString().toUpperCase();
-      $btn.data("baseLabel", baseLabel);
-    }
-
-    const baseLabel = $btn.data("baseLabel");
-
-    // Decide what to show
-    let label = baseLabel;
-
-    if (showNums) {
-      // If it's a small value (like 13), assume it's raw and convert to % (x5)
-      // If it's already a big number (like 65), assume it's already a %.
-      let percent = val;
-      if (val <= 20) {
-        percent = val * 5;
+      if (!actor || !key) {
+        $btn.hide();
+        return;
       }
 
-      // Clamp to something sane just in case
-      if (percent < 0) percent = 0;
-      if (percent > 200) percent = 200;
+      // Try a few common roots so this is resilient to your system schema
+      const statsRoot =
+        actor.system?.stats ||
+        actor.system?.statistics ||
+        actor.system?.characteristics ||
+        actor.system?.attributes ||
+        {};
 
-      label = `${baseLabel} ${percent}%`;
-    }
+      // Try key, lower, upper so "str" / "STR" both work
+      const statObj =
+        statsRoot[key] ||
+        statsRoot[key.toLowerCase?.()] ||
+        statsRoot[key.toUpperCase?.()];
 
-    $btn.text(label);
-    $btn.show();
-  });
-}
+      const rawVal = statObj?.value ?? statObj?.score ?? statObj;
+      const val = Number(rawVal);
+
+      // If we can't get a numeric value, just hide the button
+      if (!statObj || Number.isNaN(val)) {
+        $btn.hide();
+        return;
+      }
+
+      // Cache base label once so we don't keep appending numbers
+      if (!$btn.data("baseLabel")) {
+        const existing = ($btn.text() || "").toString().trim();
+        const baseLabel = existing || key.toString().toUpperCase();
+        $btn.data("baseLabel", baseLabel);
+      }
+
+      const baseLabel = $btn.data("baseLabel");
+
+      // Decide what to show
+      let label = baseLabel;
+
+      if (showNums) {
+        // If it's a small value (like 13), assume it's raw and convert to % (x5)
+        // If it's already a big number (like 65), assume it's already a %.
+        let percent = val;
+        if (val <= 20) {
+          percent = val * 5;
+        }
+
+        // Clamp to something sane just in case
+        if (percent < 0) percent = 0;
+        if (percent > 200) percent = 200;
+
+        label = `${baseLabel} ${percent}%`;
+      }
+
+      $btn.text(label);
+      $btn.show();
+    });
+  }
 
   // adjust HP by +1 / -1 from the buttons
   static async _adjustHp(delta) {
@@ -818,117 +828,116 @@ static refreshStatButtons() {
   }
 
   // UPDATED: show skill % on buttons, and hide untrained (<10%) base skills
-// UPDATED: obey MailSystem.showSkillNumbers
-static refreshSkillHotbar() {
-  const actor = this._getCurrentActor();
-  const skills = actor?.system?.skills || {};
-  const showNums = MailSystem.showSkillNumbers;
+  // UPDATED: obey MailSystem.showSkillNumbers
+  static refreshSkillHotbar() {
+    const actor = this._getCurrentActor();
+    const skills = actor?.system?.skills || {};
+    const showNums = MailSystem.showSkillNumbers;
 
-  $(".dg-skill-roll-btn")
-    .not(".dg-typed-skill-btn")
-    .each((_, el) => {
-      const $btn = $(el);
-      const uiKey = $btn.data("skill");
+    $(".dg-skill-roll-btn")
+      .not(".dg-typed-skill-btn")
+      .each((_, el) => {
+        const $btn = $(el);
+        const uiKey = $btn.data("skill");
 
-      if (!uiKey || !actor) {
-        $btn.hide();
-        return;
-      }
+        if (!uiKey || !actor) {
+          $btn.hide();
+          return;
+        }
 
-      const systemKey = this._mapSkillKey(uiKey);
-      const skillObj = skills[systemKey];
-      const prof = Number(skillObj?.proficiency ?? 0);
+        const systemKey = this._mapSkillKey(uiKey);
+        const skillObj = skills[systemKey];
+        const prof = Number(skillObj?.proficiency ?? 0);
 
-      if (!skillObj || Number.isNaN(prof) || prof < 10) {
-        $btn.hide();
-        return;
-      }
+        if (!skillObj || Number.isNaN(prof) || prof < 10) {
+          $btn.hide();
+          return;
+        }
 
-      const isMarked = !!skillObj.failure; // ☣ if this is true
+        const isMarked = !!skillObj.failure; // ☣ if this is true
 
-      // Cache the base label once so we don't keep appending stuff
-      if (!$btn.data("baseLabel")) {
-        const existing = ($btn.text() || "").toString().trim();
-        const baseLabel =
-          existing ||
-          (
-            game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
-            systemKey
-          ).toString().toUpperCase();
-        $btn.data("baseLabel", baseLabel);
-      }
+        // Cache the base label once so we don't keep appending stuff
+        if (!$btn.data("baseLabel")) {
+          const existing = ($btn.text() || "").toString().trim();
+          const baseLabel =
+            existing ||
+            (
+              game.i18n?.localize?.(`DG.Skills.${systemKey}`) ||
+              systemKey
+            ).toString().toUpperCase();
+          $btn.data("baseLabel", baseLabel);
+        }
 
-      const baseLabel = $btn.data("baseLabel");
+        const baseLabel = $btn.data("baseLabel");
 
-      // Build label according to toggle
-      let label = baseLabel;
-      if (showNums) {
-        label = `${baseLabel} ${prof}%`;
-      }
+        // Build label according to toggle
+        let label = baseLabel;
+        if (showNums) {
+          label = `${baseLabel} ${prof}%`;
+        }
 
-      if (isMarked) {
-        label = `${label} ☣`;
-      }
+        if (isMarked) {
+          label = `${label} ☣`;
+        }
 
-      $btn.text(label);
-      $btn.show();
-    });
-}
-
-  // UPDATED: typed skill labels + %
-// UPDATED: typed skill labels obey MailSystem.showSkillNumbers
-static refreshTypedSkillButtons() {
-  const actor = this._getCurrentActor();
-  const $skillBar = $(".dg-mail-base-skillbar");
-  if (!$skillBar.length) return;
-
-  $skillBar.find(".dg-typed-skill-btn").remove();
-  if (!actor) return;
-
-  const showNums = MailSystem.showSkillNumbers;
-  const typedSkills = actor.system?.typedSkills || {};
-
-  const entries = Object.entries(typedSkills)
-    .filter(([_, s]) => {
-      const val = Number(s?.proficiency ?? 0);
-      return !Number.isNaN(val) && val > 0;
-    })
-    .sort((a, b) => {
-      const [, A] = a,
-        [, B] = b;
-      const labelA = `${(A.group || "").toUpperCase()} (${(
-        A.label || ""
-      ).toUpperCase()})`;
-      const labelB = `${(B.group || "").toUpperCase()} (${(
-        B.label || ""
-      ).toUpperCase()})`;
-      return labelA.localeCompare(labelB);
-    });
-
-  for (const [key, skill] of entries) {
-    const prof = Number(skill.proficiency ?? 0);
-    const isMarked = !!skill.failure; // ☣ marker
-
-    let baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
-      skill.label || key
-    ).toUpperCase()})`;
-
-    let labelText = baseLabel;
-    if (showNums) {
-      labelText = `${baseLabel} ${prof}%`;
-    }
-    if (isMarked) {
-      labelText = `${labelText} ☣`;
-    }
-
-    const $btn = $(`
-      <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
-        ${labelText}
-      </button>
-    `);
-    $skillBar.append($btn);
+        $btn.text(label);
+        $btn.show();
+      });
   }
-}
+
+  // UPDATED: typed skill labels obey MailSystem.showSkillNumbers
+  static refreshTypedSkillButtons() {
+    const actor = this._getCurrentActor();
+    const $skillBar = $(".dg-mail-base-skillbar");
+    if (!$skillBar.length) return;
+
+    $skillBar.find(".dg-typed-skill-btn").remove();
+    if (!actor) return;
+
+    const showNums = MailSystem.showSkillNumbers;
+    const typedSkills = actor.system?.typedSkills || {};
+
+    const entries = Object.entries(typedSkills)
+      .filter(([_, s]) => {
+        const val = Number(s?.proficiency ?? 0);
+        return !Number.isNaN(val) && val > 0;
+      })
+      .sort((a, b) => {
+        const [, A] = a,
+          [, B] = b;
+        const labelA = `${(A.group || "").toUpperCase()} (${(
+          A.label || ""
+        ).toUpperCase()})`;
+        const labelB = `${(B.group || "").toUpperCase()} (${(
+          B.label || ""
+        ).toUpperCase()})`;
+        return labelA.localeCompare(labelB);
+      });
+
+    for (const [key, skill] of entries) {
+      const prof = Number(skill.proficiency ?? 0);
+      const isMarked = !!skill.failure; // ☣ marker
+
+      let baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
+        skill.label || key
+      ).toUpperCase()})`;
+
+      let labelText = baseLabel;
+      if (showNums) {
+        labelText = `${baseLabel} ${prof}%`;
+      }
+      if (isMarked) {
+        labelText = `${labelText} ☣`;
+      }
+
+      const $btn = $(`
+        <button class="dg-button dg-skill-roll-btn dg-typed-skill-btn" data-skill="${key}">
+          ${labelText}
+        </button>
+      `);
+      $skillBar.append($btn);
+    }
+  }
 
   static refreshWeaponHotbar() {
     const actor = this._getCurrentActor();
@@ -2376,6 +2385,7 @@ static refreshTypedSkillButtons() {
     }
   }
 }
+
 // Global delegated handler for the SHOW% / HIDE% toggle button
 $(document).on("click", "#dg-toggle-skill-numbers", (event) => {
   event.preventDefault();
@@ -2385,13 +2395,19 @@ $(document).on("click", "#dg-toggle-skill-numbers", (event) => {
 
   const $btn = $(event.currentTarget);
 
-  // Update button text & a helper class so you can style it if you want
+  // Label describes what will happen if you click it
   if (MailSystem.showSkillNumbers) {
-    $btn.text("SHOW %");
-    $btn.removeClass("dg-skillnumbers-hidden").addClass("dg-skillnumbers-visible");
-  } else {
+    // Numbers are currently visible; clicking will hide them
     $btn.text("HIDE %");
-    $btn.removeClass("dg-skillnumbers-visible").addClass("dg-skillnumbers-hidden");
+    $btn
+      .removeClass("dg-skillnumbers-hidden")
+      .addClass("dg-skillnumbers-visible");
+  } else {
+    // Numbers are currently hidden; clicking will show them
+    $btn.text("SHOW %");
+    $btn
+      .removeClass("dg-skillnumbers-visible")
+      .addClass("dg-skillnumbers-hidden");
   }
 
   // Rebuild the buttons so they reflect the new mode
