@@ -1,6 +1,9 @@
 // mail-system.js
 import { DeltaGreenUI } from "./delta-green-ui.js";
 
+// v12+ compatibility: prefer CHAT_MESSAGE_STYLES; fallback to CHAT_MESSAGE_TYPES on older Foundry
+const CHAT_STYLES = CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES;
+
 export class MailSystem {
   static messages = [];
   static currentModifier = 0; // one-shot modifier: -40, -20, 0, +20, +40
@@ -1366,7 +1369,7 @@ export class MailSystem {
         user: game.user.id,
         speaker: ChatMessage.getSpeaker({ actor }),
         content: richContent,
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+        type: CHAT_STYLES.OTHER,
         flags: {
           [DeltaGreenUI.ID]: {
             weaponSummary: true,
@@ -1756,7 +1759,7 @@ export class MailSystem {
           <b>TEMPORARY INSANITY TRIGGERED:</b> ${displayName} has lost
           <b>${loss}</b> SAN from this single shock. For a short time, the Agent is not thinking clearly.
         </p>
-        <p style="font-size: 19px; opacity: 0.9;">
+        <p style="font-size: 19px; opacity: 0.9%;">
           <b>HANDLER &amp; PLAYER:</b> Decide together how this episode manifests:
           <b>FLEE</b> (panic escape), <b>STRUGGLE</b> (reckless aggression), or
           <b>SUBMIT</b> (shutdown/catatonia), in a way that fits the scene and SAN source.
@@ -1871,7 +1874,7 @@ export class MailSystem {
       content,
       user: game.user.id,
       speaker: ChatMessage.getSpeaker(),
-      type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+      type: CHAT_STYLES.OTHER,
     });
   }
 
@@ -1973,9 +1976,7 @@ export class MailSystem {
       if (this.messages.length === 0 || this.messages.length > 60) {
         this.messages = chatMessages.map((msg) => {
           const isRoll =
-            msg.isRoll === true ||
-            (msg.rolls && msg.rolls.length > 0) ||
-            msg.type === CONST.CHAT_MESSAGE_TYPES.ROLL;
+            (msg.rolls?.length ?? 0) > 0;
 
           return {
             id: msg.id,
@@ -1993,9 +1994,7 @@ export class MailSystem {
           if (existing.has(msg.id)) continue;
 
           const isRoll =
-            msg.isRoll === true ||
-            (msg.rolls && msg.rolls.length > 0) ||
-            msg.type === CONST.CHAT_MESSAGE_TYPES.ROLL;
+            (msg.rolls?.length ?? 0) > 0;
 
           add.push({
             id: msg.id,
@@ -2268,7 +2267,7 @@ export class MailSystem {
         user: game.user.id,
         speaker: ChatMessage.getSpeaker({ actor }),
         content,
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER
+        type: CHAT_STYLES.OTHER
       });
 
       // Refresh mail / rolls view
@@ -2346,9 +2345,7 @@ export class MailSystem {
       if (this.messages.find((m) => m.id === message.id)) return;
 
       const isRoll =
-        message.isRoll === true ||
-        (message.rolls && message.rolls.length > 0) ||
-        message.type === CONST.CHAT_MESSAGE_TYPES.ROLL;
+        (message.rolls?.length ?? 0) > 0;
 
       this.messages.push({
         id: message.id,

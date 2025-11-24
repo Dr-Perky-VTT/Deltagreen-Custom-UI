@@ -23,14 +23,15 @@ export class RollsManager {
       }
     });
 
-    // Whenever a new chat message is rendered, see if it's a roll and mirror it
-    Hooks.on("renderChatMessage", (message) => {
-      try {
-        this._handleNewMessage(message);
-      } catch (err) {
-        console.error("Delta Green UI | RollsManager renderChatMessage error:", err);
-      }
-    });
+    
+// Whenever a new chat message is rendered, see if it's a roll and mirror it
+Hooks.on("renderChatMessageHTML", (message /*, html, data */) => {
+  try {
+    this._handleNewMessage(message);
+  } catch (err) {
+    console.error("Delta Green UI | RollsManager renderChatMessageHTML error:", err);
+  }
+});
 
     // Keep the "LOGGED IN" header in sync with token / actor changes
     Hooks.on("controlToken", () => {
@@ -77,27 +78,11 @@ export class RollsManager {
       return;
     }
 
-    const getShortAgentName = (rawName) => {
-      if (!rawName || typeof rawName !== "string") return "UNKNOWN";
-
-      const parts = rawName.trim().split(/\s+/).filter(Boolean);
-
-      if (parts.length >= 4) {
-        // Prefer 3rd + 4th
-        return `${parts[2]} ${parts[3]}`;
-      } else if (parts.length === 3) {
-        // Fallback: 2nd + 3rd
-        return `${parts[1]} ${parts[2]}`;
-      } else if (parts.length === 2) {
-        // Fallback: both
-        return `${parts[0]} ${parts[1]}`;
-      }
-
-      return parts[0] || "UNKNOWN";
-    };
-
+    // Reuse MailSystem's shortening logic so it matches the Mail header
     const rawName = (current.name || "UNKNOWN").trim();
-    const shortName = getShortAgentName(rawName);
+    const shortName =
+      (MailSystem._shortenName && MailSystem._shortenName(rawName)) ||
+      rawName.toUpperCase();
 
     nameEl.textContent = `LOGGED IN: ${shortName.toUpperCase()}`;
   }
@@ -112,19 +97,28 @@ export class RollsManager {
       dgFlags.weaponAttack ||
       dgFlags.weaponSummary;
 
+    // v12+ friendly: rely on message.rolls / isRoll, not message.type / CONST.CHAT_MESSAGE_TYPES
     const hasRollObj =
       message.isRoll === true ||
-      (message.rolls && message.rolls.length > 0) ||
-      message.type === CONST.CHAT_MESSAGE_TYPES.ROLL;
+      (message.rolls && message.rolls.length > 0);
 
     return !!(hasRollObj || hasDgRollFlag);
   }
 
-  static _formatSender(user) {
-    // Reuse MailSystem's naming so it matches the mail view (AGENT X / HANDLER)
+  static _formatSenderFromMessage(message) {
     try {
-      return MailSystem.formatSenderName(user);
+      if (MailSystem.getMessageSender) {
+        // Use the exact same sender logic as the mail view
+        return MailSystem.getMessageSender(message);
+      }
+
+      // Fallback: use the older formatSenderName if getMessageSender isn’t available
+      const user = message.author || message.user;
+      return MailSystem.formatSenderName
+        ? MailSystem.formatSenderName(user)
+        : (user?.name || "UNKNOWN").toUpperCase();
     } catch (_e) {
+      const user = message.author || message.user;
       return (user?.name || "UNKNOWN").toUpperCase();
     }
   }
@@ -136,7 +130,7 @@ export class RollsManager {
 
     this.rolls = recentRolls.map((msg) => ({
       id: msg.id,
-      sender: this._formatSender(msg.user),
+      sender: this._formatSenderFromMessage(msg),
       // This uses the exact same logic as the MailSystem view
       content: MailSystem._buildRollContent(msg),
       timestamp: msg.timestamp
@@ -152,7 +146,7 @@ export class RollsManager {
 
     const entry = {
       id: message.id,
-      sender: this._formatSender(message.user),
+      sender: this._formatSenderFromMessage(message),
       content: MailSystem._buildRollContent(message),
       timestamp: message.timestamp
     };

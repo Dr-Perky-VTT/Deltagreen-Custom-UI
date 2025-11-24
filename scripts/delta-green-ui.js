@@ -17,6 +17,9 @@ import { BankingManager } from "./banking-manager.js";
 import { ExpensesManager } from "./equipment-catalog.js";
 import { CombatManager } from "./combat-manager.js";
 import { HealthManager } from "./health-manager.js";
+// Use the namespaced Handlebars helpers (avoids global deprecation warnings)
+const { renderTemplate, loadTemplates } = foundry.applications.handlebars;
+
 // ---------------------------------------------------------------------------
 // Shared font list so settings UI + CRT dropdown stay in sync
 // ---------------------------------------------------------------------------
@@ -948,18 +951,23 @@ game.settings.register(this.ID, "scanlineIntensity", {
   static initHooks() {
     Hooks.on("ready", () => this.onReady());
 
-    Hooks.on("renderChatMessage", (message, html, data) => {
-      if (this.isInterfaceActive()) {
-        setTimeout(() => {
-          MailSystem.renderChatMessage(message, html, data);
-          DeltaGreenUI.updateRollsLastResult?.(message, html, data);
-          DeltaGreenUI.updateMiniChatWindow(); // keep mini roll feed in sync with RollsManager
-        }, 0);
-      }
-      if (message.flavor && message.flavor.includes("Unregistered Activity")) {
-        this.styleRollMessage(html);
-      }
-    });
+// Foundry V13+ uses renderChatMessageHTML (HTMLElement instead of jQuery)
+Hooks.on("renderChatMessageHTML", (message, html, data) => {
+  // Normalize to jQuery so existing code keeps working
+  const $html = html instanceof jQuery ? html : $(html);
+
+  if (this.isInterfaceActive()) {
+    setTimeout(() => {
+      MailSystem.renderChatMessage(message, $html, data);
+      DeltaGreenUI.updateRollsLastResult?.(message, $html, data);
+      DeltaGreenUI.updateMiniChatWindow(); // keep mini roll feed in sync with RollsManager
+    }, 0);
+  }
+
+  if (message.flavor && message.flavor.includes("Unregistered Activity")) {
+    this.styleRollMessage($html);
+  }
+});
 
     // Track "last viewed" time for actor sheets (for LAST ENTRIES ordering)
     Hooks.on("renderActorSheet", (sheet) => {
