@@ -6,6 +6,11 @@ export class MailSystem {
   static currentModifier = 0; // one-shot modifier: -40, -20, 0, +20, +40
   static showSkillNumbers = true;
 
+  // Batched refresh / debounce helpers
+  static _actorRefreshTimeout = null;
+  static _pendingActorRefreshActor = null;
+  static _loadMessagesTimeout = null;
+
   /* ------------------------------------------------------------------------ */
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
@@ -130,16 +135,8 @@ export class MailSystem {
 
     Hooks.on("updateActor", (actor) => {
       try {
-        const current = this._getCurrentActor();
-        if (current && current.id === actor.id) {
-          this.refreshSkillHotbar();
-          this.refreshTypedSkillButtons();
-          this.refreshWeaponHotbar();
-          this.refreshStatButtons();
-          this.refreshHpWpPanel(actor);
-          this._refreshSanButtonStatus(actor);
-          this._updateMailHeaderActorName(actor);
-        }
+        // Debounced actor refresh instead of hammering every time
+        this._scheduleActorRefresh(actor);
       } catch (err) {
         console.error("Delta Green UI | Error in updateActor hook:", err);
       }
@@ -1052,7 +1049,7 @@ export class MailSystem {
       });
 
       if (mod !== 0) this.setModifier(0);
-      setTimeout(() => this.loadMessages(), 150);
+      this.requestLoadMessages?.();
     } catch (err) {
       console.error("Delta Green UI | rollSystemSkill error:", err);
       ui.notifications.error("Error rolling skill.");
@@ -1106,7 +1103,7 @@ export class MailSystem {
       });
 
       if (mod !== 0) this.setModifier(0);
-      setTimeout(() => this.loadMessages(), 150);
+      this.requestLoadMessages?.();
     } catch (err) {
       console.error("Delta Green UI | rollStatOrLuck error:", err);
       ui.notifications.error("Error rolling stat.");
@@ -1253,8 +1250,6 @@ export class MailSystem {
         const tens = Math.floor(value / 10);
         const ones = value % 10;
 
-        // In the strict RAW version you'd treat 0s as 10s individually,
-        // but here we keep it simple with tens+ones (still 2d10-ish).
         return tens + ones;
       };
 
@@ -1394,7 +1389,7 @@ export class MailSystem {
 
       // Reset one-shot modifier & refresh CRT log
       if (mod !== 0) this.setModifier(0);
-      setTimeout(() => this.loadMessages(), 150);
+      this.requestLoadMessages?.();
     } catch (err) {
       console.error("Delta Green UI | rollWeaponAttack error:", err);
       ui.notifications.error("Error rolling weapon attack.");
@@ -1796,7 +1791,7 @@ export class MailSystem {
       } else {
         await this.sendRegularMessage(content);
       }
-      setTimeout(() => this.loadMessages(), 100);
+      this.requestLoadMessages?.();
     } catch (error) {
       console.error("Delta Green UI | Error processing message:", error);
       ui.notifications.error("Erreur lors de l'envoi du message");
@@ -2277,7 +2272,7 @@ export class MailSystem {
       });
 
       // Refresh mail / rolls view
-      setTimeout(() => this.loadMessages(), 150);
+      this.requestLoadMessages?.();
     } catch (err) {
       console.error(
         "Delta Green UI | applyMarkedSkillImprovements error:",
@@ -2370,6 +2365,52 @@ export class MailSystem {
     }
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* BATCHED REFRESH HELPERS                                                  */
+  /* ------------------------------------------------------------------------ */
+
+  static _scheduleActorRefresh(actor) {
+    const current = this._getCurrentActor();
+    if (!current || actor?.id !== current.id) return;
+
+    this._pendingActorRefreshActor = actor || current;
+
+    if (this._actorRefreshTimeout) return;
+
+    this._actorRefreshTimeout = setTimeout(() => {
+      try {
+        const a = this._pendingActorRefreshActor || this._getCurrentActor();
+        if (!a) return;
+        this.refreshSkillHotbar();
+        this.refreshTypedSkillButtons();
+        this.refreshWeaponHotbar();
+        this.refreshStatButtons();
+        this.refreshHpWpPanel(a);
+        this._refreshSanButtonStatus(a);
+        this._updateMailHeaderActorName(a);
+      } finally {
+        this._actorRefreshTimeout = null;
+        this._pendingActorRefreshActor = null;
+      }
+    }, 75);
+  }
+
+  static requestLoadMessages() {
+    if (this._loadMessagesTimeout) return;
+
+    this._loadMessagesTimeout = setTimeout(() => {
+      try {
+        this.loadMessages();
+      } finally {
+        this._loadMessagesTimeout = null;
+      }
+    }, 75);
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* PUBLIC SEND                                                              */
+  /* ------------------------------------------------------------------------ */
+
   static async sendMessage(content) {
     if (!content || !String(content).trim()) return;
     try {
@@ -2378,7 +2419,7 @@ export class MailSystem {
       } else {
         await this.sendRegularMessage(content);
       }
-      setTimeout(() => this.loadMessages(), 100);
+      this.requestLoadMessages?.();
     } catch (error) {
       console.error("Delta Green UI | Error sending message:", error);
       ui.notifications.error("Error sending message");
