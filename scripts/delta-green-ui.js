@@ -684,50 +684,6 @@ static updateMiniChatWindow(_messages = null) {
   }
 }
 
-  /**
-   * Mini roll feed: mirror the RollsManager (same source as the ROLLS view).
-   * Ignores arguments and just reads RollsManager.rolls.
-   */
-  static updateMiniChatWindow(_messages = null) {
-    try {
-      const body = document.getElementById("dg-mini-chat-body");
-      if (!body) return;
-
-      body.innerHTML = "";
-
-      // Require RollsManager + some rolls
-      if (!RollsManager || !Array.isArray(RollsManager.rolls) || !RollsManager.rolls.length) {
-        body.innerHTML = `<div class="dg-mini-chat-entry dg-placeholder">NO ROLLS YET</div>`;
-        return;
-      }
-
-      // Last few rolls only (keep it tight)
-      const recent = RollsManager.rolls.slice(-6);
-
-      for (const entryData of recent) {
-        const entry = document.createElement("div");
-        entry.className = "dg-mini-chat-entry";
-
-        // Sender like ROLLS window
-        const sender = document.createElement("div");
-        sender.classList.add("dg-rolls-sender");
-        sender.textContent = entryData.sender;
-        entry.appendChild(sender);
-
-        // Content is same HTML RollsManager uses (.dg-roll-result, etc.)
-        const content = document.createElement("div");
-        content.classList.add("dg-rolls-content");
-        content.innerHTML = entryData.content || "";
-        entry.appendChild(content);
-
-        body.appendChild(entry);
-      }
-
-      body.scrollTop = body.scrollHeight;
-    } catch (err) {
-      console.error("Delta Green UI | Error updating mini chat window:", err);
-    }
-  }
 
   /* ------------------------------- Journals ------------------------------- */
 
@@ -953,21 +909,23 @@ game.settings.register(this.ID, "scanlineIntensity", {
 
 // Foundry V13+ uses renderChatMessageHTML (HTMLElement instead of jQuery)
 Hooks.on("renderChatMessageHTML", (message, html, data) => {
-  // Normalize to jQuery so existing code keeps working
   const $html = html instanceof jQuery ? html : $(html);
 
-  if (this.isInterfaceActive()) {
-    setTimeout(() => {
-      MailSystem.renderChatMessage(message, $html, data);
-      DeltaGreenUI.updateRollsLastResult?.(message, $html, data);
-      DeltaGreenUI.updateMiniChatWindow(); // keep mini roll feed in sync with RollsManager
-    }, 0);
-  }
+  // If the CRT isn’t active, this hook does nothing
+  if (!this.isInterfaceActive()) return;
+
+  setTimeout(() => {
+    MailSystem.renderChatMessage(message, $html, data);
+    DeltaGreenUI.updateRollsLastResult?.(message, $html, data);
+    DeltaGreenUI.updateMiniChatWindow(); // keep mini roll feed in sync with RollsManager
+  }, 0);
 
   if (message.flavor && message.flavor.includes("Unregistered Activity")) {
     this.styleRollMessage($html);
   }
 });
+
+
 
     // Track "last viewed" time for actor sheets (for LAST ENTRIES ordering)
     Hooks.on("renderActorSheet", (sheet) => {
@@ -982,12 +940,15 @@ Hooks.on("renderChatMessageHTML", (message, html, data) => {
       this._kickDeferredRefresh();
     });
     Hooks.on("updateActor", (actor) => {
+      if (!this.isInterfaceActive()) return;
+
       this.loadLastEntries();
       this._kickDeferredRefresh();
       // Keep status + hotbar in sync with actual stats
       this.updateTopStatusBar();
       this.refreshBottomHotbar();
     });
+
     Hooks.on("deleteActor", () => {
       this.loadLastEntries();
       this._kickDeferredRefresh();
@@ -1230,63 +1191,54 @@ static applyScanlineIntensity(value) {
     // no-op
   }
 
-  static openInterface() {
-    const container = $("#dg-crt-container");
-    if (!container.length) {
-      this.renderInterface()
-        .then(() => {
-          $("#dg-crt-container").show();
-          game.user.setFlag(this.ID, "interfaceActive", true);
+static openInterface() {
+  const container = $("#dg-crt-container");
+  if (!container.length) {
+    this.renderInterface()
+      .then(() => {
+        $("#dg-crt-container").show();
+        game.user.setFlag(this.ID, "interfaceActive", true);
 
-          // CRT visible for everyone
-          $("body").addClass("dg-crt-on");
+        // CRT visible for everyone
+        $("body").addClass("dg-crt-on");
 
-          if (!game.user.isGM) {
-            $("body").addClass("dg-crt-active");
-            this.hideFoundryCoreUi();
-          } else {
-            $("body").removeClass("dg-crt-active");
-          }
+        if (!game.user.isGM) {
+          $("body").addClass("dg-crt-active");
+          this.hideFoundryCoreUi();
+        } else {
+          $("body").removeClass("dg-crt-active");
+        }
 
-          this.moveDiceTrayToMail();
-        })
-        .catch((e) => {
-          console.error("Delta Green UI | Error rendering interface:", e);
-          ui.notifications.error("Error rendering Delta Green UI interface");
-        });
-      return;
-    }
-
-    if (!container.is(":visible")) {
-      container.show();
-      game.user.setFlag(this.ID, "interfaceActive", true);
-
-      // CRT visible for everyone
-      $("body").addClass("dg-crt-on");
-
-      if (!game.user.isGM) {
-        $("body").addClass("dg-crt-active");
-        this.hideFoundryCoreUi();
-      } else {
-        $("body").removeClass("dg-crt-active");
-      }
-
-      this.moveDiceTrayToMail();
-
-      this.updateTopStatusBar();
-      this.refreshBottomHotbar();
-      this._injectTokenCompass();
-
-      if (!this.refreshIntervalId) {
-        this.refreshIntervalId = setInterval(() => {
-          if (this.isInterfaceActive()) {
-            this.loadLastEntries();
-            this.forceDisplayLastEntries();
-          }
-        }, 500);
-      }
-    }
+        this.moveDiceTrayToMail();
+      })
+      .catch((e) => {
+        console.error("Delta Green UI | Error rendering interface:", e);
+        ui.notifications.error("Error rendering Delta Green UI interface");
+      });
+    return;
   }
+
+  if (!container.is(":visible")) {
+    container.show();
+    game.user.setFlag(this.ID, "interfaceActive", true);
+
+    // CRT visible for everyone
+    $("body").addClass("dg-crt-on");
+
+    if (!game.user.isGM) {
+      $("body").addClass("dg-crt-active");
+      this.hideFoundryCoreUi();
+    } else {
+      $("body").removeClass("dg-crt-active");
+    }
+
+    this.moveDiceTrayToMail();
+    this.updateTopStatusBar();
+    this.refreshBottomHotbar();
+    this._injectTokenCompass();
+  }
+}
+
 
   /* --------------------------- RECENT JOURNAL ENTRIES --------------------- */
 
@@ -1466,11 +1418,6 @@ static applyScanlineIntensity(value) {
       this.refreshBottomHotbar();
       this._injectTokenCompass();
 
-      if (!this.refreshIntervalId) {
-        this.refreshIntervalId = setInterval(() => {
-          if (this.isInterfaceActive()) this.loadLastEntries();
-        }, 500);
-      }
     }
   }
 
@@ -1601,13 +1548,6 @@ static applyScanlineIntensity(value) {
 
       setTimeout(() => this.forceDisplayLastEntries(), 1000);
 
-      if (this.refreshIntervalId) clearInterval(this.refreshIntervalId);
-      this.refreshIntervalId = setInterval(() => {
-        if (this.isInterfaceActive()) {
-          this.loadLastEntries();
-          this.forceDisplayLastEntries();
-        }
-      }, 500);
 
       // CUSTOM HOOK so MailSystem & others know the UI DOM is ready
       Hooks.callAll("renderDeltaGreenUI");
@@ -1990,6 +1930,9 @@ static initInterfaceEvents() {
 
   static loadLastEntries() {
     try {
+		// 🔹 Fast bail: don’t do anything if the CRT overlay isn’t active
+  if (!this.isInterfaceActive()) return;
+
       // 1) Make sure we actually have a list element
       let $list = $("#dg-last-entries-list");
 

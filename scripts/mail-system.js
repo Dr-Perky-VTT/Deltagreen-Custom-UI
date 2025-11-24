@@ -18,6 +18,75 @@ export class MailSystem {
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
 
+  static init() {
+    console.log("Delta Green UI | Initializing mail system");
+
+    // Restore per-user preference for showing skill/stat percentages
+    try {
+      const saved = game.user?.getFlag?.(DeltaGreenUI.ID, "showSkillNumbers");
+      if (typeof saved === "boolean") {
+        MailSystem.showSkillNumbers = saved;
+      }
+    } catch (e) {
+      console.warn(
+        "Delta Green UI | Could not restore showSkillNumbers flag",
+        e
+      );
+    }
+
+    Hooks.on("renderDeltaGreenUI", () => {
+      try {
+        this.loadMessages();
+        this.refreshSkillHotbar();
+        this.refreshStatButtons();
+        this.refreshTypedSkillButtons();
+        this.refreshModifierButtons();
+        this.refreshWeaponHotbar();
+        this.ensureSanButton();
+        this.refreshHpWpPanel();
+        this._refreshSanButtonStatus();
+        this._updateMailHeaderActorName();
+        this._enableScrollableMailLayout();
+      } catch (err) {
+        console.error(
+          "Delta Green UI | Error in renderDeltaGreenUI hook:",
+          err
+        );
+      }
+    });
+
+Hooks.on("controlToken", (token, controlled) => {
+  try {
+    // Only react when a token becomes controlled, not when it's released
+    if (!controlled) return;
+
+    // Just schedule a refresh instead of doing everything immediately
+    this._scheduleActorRefresh(token?.actor || null);
+  } catch (err) {
+    console.error("Delta Green UI | Error in controlToken hook:", err);
+  }
+});
+
+    Hooks.on("updateActor", (actor) => {
+      try {
+        // Debounced actor refresh instead of hammering every time
+        this._scheduleActorRefresh(actor);
+      } catch (err) {
+        console.error("Delta Green UI | Error in updateActor hook:", err);
+      }
+    });
+
+    Hooks.on("renderChatMessage", (message, html, data) => {
+      try {
+        this.renderChatMessage(message, html, data);
+      } catch (err) {
+        console.error("Delta Green UI | Error in renderChatMessage hook:", err);
+      }
+    });
+
+    this.initEvents();
+  }
+
   static _enableScrollableMailLayout() {
     // Inject styles in case your CSS file isn't easy to change
     if (!document.getElementById("dg-mail-scroll-styles")) {
@@ -95,65 +164,6 @@ export class MailSystem {
       const observer = new MutationObserver(stickToBottom);
       observer.observe(container, { childList: true, subtree: true });
     }
-  }
-
-  static init() {
-    console.log("Delta Green UI | Initializing mail system");
-
-    Hooks.on("renderDeltaGreenUI", () => {
-      try {
-        this.loadMessages();
-        this.refreshSkillHotbar();
-        this.refreshStatButtons();
-        this.refreshTypedSkillButtons();
-        this.refreshModifierButtons();
-        this.refreshWeaponHotbar();
-        this.ensureSanButton();
-        this.refreshHpWpPanel();
-        this._refreshSanButtonStatus();
-        this._updateMailHeaderActorName();
-        this._enableScrollableMailLayout();
-      } catch (err) {
-        console.error(
-          "Delta Green UI | Error in renderDeltaGreenUI hook:",
-          err
-        );
-      }
-    });
-
-    Hooks.on("controlToken", (token) => {
-      try {
-        this.refreshSkillHotbar();
-        this.refreshStatButtons();
-        this.refreshTypedSkillButtons();
-        this.refreshWeaponHotbar();
-        this.ensureSanButton();
-        this.refreshHpWpPanel(token?.actor || null);
-        this._refreshSanButtonStatus(token?.actor || null);
-        this._updateMailHeaderActorName(token?.actor || null);
-      } catch (err) {
-        console.error("Delta Green UI | Error in controlToken hook:", err);
-      }
-    });
-
-    Hooks.on("updateActor", (actor) => {
-      try {
-        // Debounced actor refresh instead of hammering every time
-        this._scheduleActorRefresh(actor);
-      } catch (err) {
-        console.error("Delta Green UI | Error in updateActor hook:", err);
-      }
-    });
-
-    Hooks.on("renderChatMessage", (message, html, data) => {
-      try {
-        this.renderChatMessage(message, html, data);
-      } catch (err) {
-        console.error("Delta Green UI | Error in renderChatMessage hook:", err);
-      }
-    });
-
-    this.initEvents();
   }
 
   /* ------------------------------------------------------------------------ */
@@ -291,12 +301,13 @@ export class MailSystem {
       archeology: "archeology",
       artillery: "artillery",
       bureaucracy: "bureaucracy",
+      computerScience: "computer_science",
       computer_science: "computer_science",
       criminology: "criminology",
       demolitions: "demolitions",
       disguise: "disguise",
       forensics: "forensics",
-      heavy_machiner: "heavy_machinery",
+      heavyMachinery: "heavy_machinery",
       heavy_machinery: "heavy_machinery",
       heavy_weapons: "heavy_weapons",
       history: "history",
@@ -309,8 +320,18 @@ export class MailSystem {
       swim: "swim",
       unnatural: "unnatural",
       ritual: "rituals",
+      rituals: "rituals"
     };
-    return map[uiKey] || uiKey;
+
+    if (!uiKey) return uiKey;
+    if (map[uiKey]) return map[uiKey];
+
+    // Fallback: normalize camelCase → snake_case
+    const normalized = String(uiKey)
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .toLowerCase();
+
+    return map[normalized] || normalized;
   }
 
   static _getActorDisplayName(actor) {
@@ -886,6 +907,7 @@ export class MailSystem {
   }
 
   // UPDATED: typed skill labels obey MailSystem.showSkillNumbers
+  // Always show marked (☣) typed skills.
   static refreshTypedSkillButtons() {
     const actor = this._getCurrentActor();
     const $skillBar = $(".dg-mail-base-skillbar");
@@ -900,7 +922,9 @@ export class MailSystem {
     const entries = Object.entries(typedSkills)
       .filter(([_, s]) => {
         const val = Number(s?.proficiency ?? 0);
-        return !Number.isNaN(val) && val > 0;
+        const isMarked = !!s?.failure;
+        // Hide truly irrelevant stuff: 0% and not marked
+        return !Number.isNaN(val) && (val > 0 || isMarked);
       })
       .sort((a, b) => {
         const [, A] = a,
@@ -923,7 +947,7 @@ export class MailSystem {
       ).toUpperCase()})`;
 
       let labelText = baseLabel;
-      if (showNums) {
+      if (showNums && !Number.isNaN(prof)) {
         labelText = `${baseLabel} ${prof}%`;
       }
       if (isMarked) {
@@ -935,6 +959,13 @@ export class MailSystem {
           ${labelText}
         </button>
       `);
+
+      // Helpful for CSS / tooltips
+      $btn.attr("data-skill-key", key);
+      $btn.attr("data-skill-group", (skill.group || "").toUpperCase());
+      $btn.attr("data-skill-label", (skill.label || key).toUpperCase());
+      $btn.attr("data-skill-prof", Number.isNaN(prof) ? "" : prof);
+
       $skillBar.append($btn);
     }
   }
@@ -2389,7 +2420,7 @@ export class MailSystem {
         this._actorRefreshTimeout = null;
         this._pendingActorRefreshActor = null;
       }
-    }, 75);
+    }, 150);
   }
 
   static requestLoadMessages() {
@@ -2425,7 +2456,7 @@ export class MailSystem {
 }
 
 // Global delegated handler for the SHOW% / HIDE% toggle button
-$(document).on("click", "#dg-toggle-skill-numbers", (event) => {
+$(document).on("click", "#dg-toggle-skill-numbers", async (event) => {
   event.preventDefault();
 
   // Flip the flag
@@ -2446,6 +2477,20 @@ $(document).on("click", "#dg-toggle-skill-numbers", (event) => {
     $btn
       .removeClass("dg-skillnumbers-visible")
       .addClass("dg-skillnumbers-hidden");
+  }
+
+  // Persist per-user preference
+  try {
+    await game.user?.setFlag?.(
+      DeltaGreenUI.ID,
+      "showSkillNumbers",
+      MailSystem.showSkillNumbers
+    );
+  } catch (e) {
+    console.warn(
+      "Delta Green UI | Could not persist showSkillNumbers flag",
+      e
+    );
   }
 
   // Rebuild the buttons so they reflect the new mode
