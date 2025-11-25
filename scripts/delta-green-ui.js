@@ -290,88 +290,72 @@ export class DeltaGreenUI {
   }
 
 
- /* ----------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------- */
 /*  TOP-RIGHT STATUS BAR (NAME + HP/WP/SAN VAGUE TEXT)                     */
 /* ----------------------------------------------------------------------- */
 
-// HP / WP / SAN TOP BAR — HP/WP use old descriptor, SAN matches mail button logic
-static updateTopStatusBar() {
+// HP / WP / SAN TOP BAR — HP/WP use same data lookup as MailSystem.refreshHpWpPanel,
+// SAN uses same ratio logic as MailSystem._refreshSanButtonStatus
+static updateTopStatusBar(actorArg = null) {
   const agentEl = document.getElementById("dg-status-agent");
-  const hpEl = document.getElementById("dg-status-hp");
-  const wpEl = document.getElementById("dg-status-wp");
-  const sanEl = document.getElementById("dg-status-san");
+  const hpEl    = document.getElementById("dg-status-hp");
+  const wpEl    = document.getElementById("dg-status-wp");
+  const sanEl   = document.getElementById("dg-status-san");
 
   // If the status bar isn't in the DOM yet, bail quietly
   if (!agentEl && !hpEl && !wpEl && !sanEl) return;
 
-  const actor = this._getCurrentActor();
+  const current = actorArg || this._getCurrentActor();
 
-  if (!actor) {
+  if (!current) {
     if (agentEl) agentEl.textContent = "AGENT: NONE";
-    if (hpEl) hpEl.textContent = "HP: N/A";
-    if (wpEl) wpEl.textContent = "WP: N/A";
-    if (sanEl) sanEl.textContent = "SAN: N/A";
+    if (hpEl)    hpEl.textContent    = "HP: N/A";
+    if (wpEl)    wpEl.textContent    = "WP: N/A";
+    if (sanEl)   sanEl.textContent   = "SAN: N/A";
     return;
   }
 
-  const sys = actor.system || actor.data?.system || actor.data?.data || {};
-
   if (agentEl) {
-    agentEl.textContent = `AGENT: ${this._getShortAgentName(actor)}`;
+    agentEl.textContent = `AGENT: ${this._getShortAgentName(current)}`;
   }
 
-  // Try multiple layouts to be safe (official DG & variants)
-  const hp =
-    sys.hp?.value ??
-    sys.hp ??
-    sys.health?.value ??
-    sys.health ??
-    null;
-  const hpMax =
-    sys.hp?.max ??
-    sys.hp_max ??
-    sys.health?.max ??
-    sys.health_max ??
-    null;
+  // ---- HP / WP: same property lookup as MailSystem.refreshHpWpPanel ----
+  const hpCurrent = Number(
+    foundry.utils.getProperty(current, "system.hp.value") ??
+    foundry.utils.getProperty(current, "system.health.value") ??
+    0
+  );
+  const hpMax = Number(
+    foundry.utils.getProperty(current, "system.hp.max") ??
+    foundry.utils.getProperty(current, "system.health.max") ??
+    foundry.utils.getProperty(current, "system.hp.value") ??
+    0
+  );
 
-  const wp =
-    sys.wp?.value ??
-    sys.willpower?.value ??
-    sys.wp ??
-    sys.willpower ??
-    null;
-  const wpMax =
-    sys.wp?.max ??
-    sys.willpower?.max ??
-    sys.wp_max ??
-    sys.willpower_max ??
-    null;
+  const wpCurrent = Number(
+    foundry.utils.getProperty(current, "system.wp.value") ?? 0
+  );
+  const wpMax = Number(
+    foundry.utils.getProperty(current, "system.wp.max") ??
+    foundry.utils.getProperty(current, "system.wp.value") ??
+    0
+  );
 
-  const san =
-    sys.san?.value ??
-    sys.sanity?.value ??
-    sys.san ??
-    sys.sanity ??
-    null;
-  const sanMax =
-    sys.san?.max ??
-    sys.sanity?.max ??
-    sys.san_max ??
-    sys.sanity_max ??
-    null;
+  const hpDesc = this._statusDescriptor("hp",  hpCurrent, hpMax);
+  const wpDesc = this._statusDescriptor("wp",  wpCurrent, wpMax);
 
-  const hpDesc = this._statusDescriptor("hp", hp, hpMax);
-  const wpDesc = this._statusDescriptor("wp", wp, wpMax);
-
-  // --- SAN: use SAME logic as MailSystem._refreshSanButtonStatus ---
+  // ---- SAN: same ratio logic as MailSystem._refreshSanButtonStatus ----
   let sanDesc;
   try {
     const sanCurrent = Number(
-      foundry.utils.getProperty(actor, "system.sanity.value") ?? san ?? 0
+      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+    );
+    const sanMax = Number(
+      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
     );
     const breakingPoint = Number(
       foundry.utils.getProperty(
-        actor,
+        current,
         "system.sanity.currentBreakingPoint"
       )
     );
@@ -404,12 +388,19 @@ static updateTopStatusBar() {
 
       sanDesc = { text, level };
     } else {
-      // Fallback to the old generic descriptor if BP info is missing
-      sanDesc = this._statusDescriptor("san", san, sanMax);
+      // Fallback to generic descriptor if BP info is missing
+      sanDesc = this._statusDescriptor("san", sanCurrent, sanMax);
     }
   } catch (e) {
     console.warn("Delta Green UI | SAN descriptor fallback:", e);
-    sanDesc = this._statusDescriptor("san", san, sanMax);
+    // Fallback with whatever we can read
+    const sanCurrent = Number(
+      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+    );
+    const sanMax = Number(
+      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
+    );
+    sanDesc = this._statusDescriptor("san", sanCurrent, sanMax);
   }
 
   const apply = (el, label, desc) => {
@@ -421,10 +412,11 @@ static updateTopStatusBar() {
     else if (desc.level === "bad") el.classList.add("dg-status-bad");
   };
 
-  apply(hpEl, "HP", hpDesc);
-  apply(wpEl, "WP", wpDesc);
+  apply(hpEl,  "HP",  hpDesc);
+  apply(wpEl,  "WP",  wpDesc);
   apply(sanEl, "SAN", sanDesc);
 }
+
 
 
   /* ----------------------------------------------------------------------- */
