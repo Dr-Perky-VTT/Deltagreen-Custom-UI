@@ -2871,3 +2871,346 @@ body.dg-crt-on {
     outline: none;
     box-shadow: 0 0 0 1px var(--crt-text);
 }
+/* ===========================
+ * TIME VIEW LAYOUT FOR dg-time-view HTML
+ * =========================== */
+
+#dg-view-time {
+  padding: 10px 14px 14px;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+#dg-view-time .dg-view-inner.dg-time-view {
+  display: block;
+}
+
+/* Two-column layout */
+#dg-view-time .dg-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+#dg-view-time .dg-col {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+/* Sections inside TIME view */
+#dg-view-time .dg-section {
+  margin-bottom: 10px;
+}
+
+#dg-view-time .dg-section-title {
+  margin-bottom: 6px;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+/* ===========================
+ * OPERATION CLOCK (LEFT)
+ * =========================== */
+
+#dg-view-time .dg-time-display {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--dg-crt-font-family, monospace);
+}
+
+#dg-view-time .dg-time-op {
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+/* Rows inside the OPERATION CLOCK (DATE / TIME / SEGMENT) */
+#dg-view-time .dg-time-display .dg-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+#dg-view-time .dg-time-display .dg-time-label {
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+#dg-view-time .dg-time-display .dg-time-value {
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+/* NOTES box */
+#dg-view-time #dg-time-notes.dg-textarea {
+  width: 100%;
+  min-height: 80px;
+  font-size: 18px;
+  font-family: var(--dg-crt-font-family, monospace);
+}
+
+/* ===========================
+ * GM CONTROL (RIGHT)
+ * =========================== */
+
+#dg-view-time .dg-time-gm-only {
+  /* visibility handled by JS/permissions */
+}
+
+/* Form rows: label + input */
+#dg-view-time .dg-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  flex-wrap: nowrap; /* keep things horizontal by default */
+}
+
+#dg-view-time .dg-time-row .dg-time-label {
+  min-width: 100px;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Inputs in GM control */
+#dg-view-time .dg-time-row .dg-input {
+  flex: 1 1 auto;
+  max-width: 180px;
+  padding: 3px 5px;
+  font-size: 18px;
+  font-family: var(--dg-crt-font-family, monospace);
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: inherit;
+}
+
+/* ===========================
+ * ADVANCE BUTTON ROW
+ * =========================== */
+
+#dg-view-time .dg-time-advance-row {
+  align-items: center;
+}
+
+#dg-view-time .dg-time-advance-buttons {
+  display: flex;
+  flex-wrap: nowrap;      /* keep all buttons in a single line */
+  gap: 6px;
+}
+
+#dg-view-time .dg-time-advance-buttons .dg-button {
+  flex: 1 1 0;
+  font-size: 16px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+/* ===========================
+ * CONTROL BUTTON ROW
+ * (START / RESET / APPLY)
+ * =========================== */
+
+#dg-view-time #dg-time-form > .dg-time-row:last-of-type {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+#dg-view-time #dg-time-form > .dg-time-row:last-of-type .dg-button {
+  flex: 0 0 auto;          /* no stretching, just sit horizontally */
+  font-size: 18px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+/* ===========================
+ * TOP-RIGHT HUD TIME (for dd/mm/yy HH:MM:SS)
+ * =========================== */
+
+#dg-status-time,
+.dg-status-time {
+  margin-left: 10px;
+  font-size: 16px;
+  letter-spacing: 0.11em;
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
+/* Players see GM notes but can't edit */
+#dg-view-time #dg-time-notes.dg-time-notes-readonly {
+  opacity: 0.9;
+  cursor: default;
+}
+
+/* ===========================
+ * TIME VIEW – OPERATION LOG
+ * =========================== */
+
+/* Log table */
+#dg-view-time .dg-time-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+#dg-view-time .dg-time-log-table th,
+#dg-view-time .dg-time-log-table td {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 3px 4px;
+  text-align: left;
+}
+
+#dg-view-time .dg-time-log-table thead th {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* Slightly narrower first two columns */
+#dg-view-time .dg-time-log-head-time {
+  width: 110px;
+}
+#dg-view-time .dg-time-log-head-agent {
+  width: 90px;
+}
+
+#dg-view-time .dg-time-log-row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.35);
+}
+#dg-view-time .dg-time-log-row:nth-child(even) {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Hover hint for GM (click to delete) */
+#dg-view-time .dg-time-log-row.dg-time-log-row-gm:hover {
+  background: rgba(255, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+/* Empty state cell */
+#dg-view-time .dg-time-log-empty {
+  text-align: center;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* +ENTRY button aligned to the right */
+#dg-view-time .dg-time-log-actions {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+#dg-view-time .dg-time-log-add {
+  font-size: 16px;
+  padding: 2px 8px;
+}
+
+/* ===========================
+ * OPERATION LOG ENTRY DIALOG
+ * =========================== */
+
+/* Dialog chrome (if you pass classes: ["dg-time-log-dialog"]) */
+.dg-time-log-dialog .window-content {
+  background: rgba(0, 0, 0, 0.9);
+  padding: 8px 10px;
+  border-top: 1px solid rgba(0, 255, 128, 0.35);
+  border-left: 1px solid rgba(0, 255, 128, 0.35);
+  border-right: 1px solid rgba(0, 255, 128, 0.1);
+  border-bottom: 1px solid rgba(0, 255, 128, 0.1);
+  font-family: var(--dg-crt-font-family, monospace);
+  font-size: 16px;
+  line-height: 1.4;
+  color: #cde8c0;
+}
+
+/* Form layout */
+.dg-time-log-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Each field group */
+.dg-time-log-form .form-group {
+  margin-bottom: 4px;
+}
+
+/* Labels */
+.dg-time-log-form .form-group > label {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+}
+
+/* Inputs + textareas share the same “terminal” look */
+.dg-time-log-form input[type="text"],
+.dg-time-log-form input[type="number"],
+.dg-time-log-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 3px 4px;
+  font-size: 16px;
+  font-family: var(--dg-crt-font-family, monospace);
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(0, 255, 128, 0.35);
+  color: #e6ffe0;
+  outline: none;
+}
+
+/* Focus ring */
+.dg-time-log-form input[type="text"]:focus,
+.dg-time-log-form input[type="number"]:focus,
+.dg-time-log-form textarea:focus {
+  border-color: rgba(0, 255, 128, 0.8);
+  box-shadow: 0 0 4px rgba(0, 255, 128, 0.4);
+}
+
+/* Textarea sizing */
+.dg-time-log-form textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+/* Optional: row layout if you combine date + time fields */
+.dg-time-log-row-inline {
+  display: flex;
+  gap: 6px;
+}
+
+.dg-time-log-row-inline .form-group {
+  flex: 1 1 0;
+  margin-bottom: 0;
+}
+
+/* Dialog buttons at the bottom */
+.dg-time-log-dialog .dialog-buttons {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.dg-time-log-dialog .dialog-button {
+  font-size: 16px;
+  padding: 2px 8px;
+  font-family: var(--dg-crt-font-family, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}

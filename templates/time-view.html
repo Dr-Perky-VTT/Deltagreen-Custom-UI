@@ -1,0 +1,140 @@
+<div class="dg-view-inner dg-time-view">
+  <div class="dg-columns">
+
+    <!-- LEFT: Big mission clock display + notes + shared log -->
+    <div class="dg-col">
+      <div class="dg-section">
+        <div class="dg-section-title">OPERATION CLOCK</div>
+
+        <div class="dg-time-display">
+          <div class="dg-time-op" id="dg-time-display-op">OPERATION</div>
+
+          <div class="dg-time-row">
+            <span class="dg-time-label">DATE</span>
+            <span class="dg-time-value" id="dg-time-display-date">—</span>
+          </div>
+
+          <div class="dg-time-row">
+            <span class="dg-time-label">TIME</span>
+            <span class="dg-time-value" id="dg-time-display-time">—</span>
+          </div>
+
+          <div class="dg-time-row">
+            <span class="dg-time-label">SEGMENT</span>
+            <span class="dg-time-value" id="dg-time-display-segment">—</span>
+          </div>
+
+          <!-- NEW: WEATHER visible to everyone -->
+          <div class="dg-time-row">
+            <span class="dg-time-label">WEATHER</span>
+            <span class="dg-time-value" id="dg-time-display-weather">—</span>
+          </div>
+        </div>
+      </div>
+      <!-- SHARED OPERATION LOG (visible to all, add button for all) -->
+      <div class="dg-section">
+        <div class="dg-section-title">OPERATION LOG</div>
+
+        <table class="dg-time-log-table">
+          <thead>
+            <tr>
+              <th class="dg-time-log-head-time">DATE / TIME</th>
+              <th class="dg-time-log-head-agent">AGENT</th>
+              <th class="dg-time-log-head-text">EVENT / NOTE</th>
+            </tr>
+          </thead>
+          <tbody id="dg-time-log-body"></tbody>
+        </table>
+
+        <div class="dg-time-log-actions">
+          <button id="dg-time-log-add" class="dg-button dg-time-log-add">
+            + ENTRY
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: GM controls (hidden from players) -->
+    <div class="dg-col dg-time-gm-only">
+      <div class="dg-section">
+        <div class="dg-section-title">GM CONTROL</div>
+
+        <form id="dg-time-form">
+          <div class="dg-time-row">
+            <label class="dg-time-label" for="dg-time-input-op">OPERATION</label>
+            <input id="dg-time-input-op"
+                   class="dg-input"
+                   type="text"
+                   placeholder="OPERATION HELIOPHOBIA">
+          </div>
+
+          <div class="dg-time-row">
+            <label class="dg-time-label" for="dg-time-input-date">DATE</label>
+            <input id="dg-time-input-date"
+                   class="dg-input"
+                   type="text"
+                   placeholder="1989-07-02">
+          </div>
+
+          <div class="dg-time-row">
+            <label class="dg-time-label" for="dg-time-input-time">TIME</label>
+            <input id="dg-time-input-time"
+                   class="dg-input"
+                   type="text"
+                   placeholder="21:15">
+          </div>
+
+          <div class="dg-time-row">
+            <label class="dg-time-label" for="dg-time-input-segment">SEGMENT</label>
+            <input id="dg-time-input-segment"
+                   class="dg-input"
+                   type="text"
+                   placeholder="NIGHT">
+          </div>
+
+          <!-- NEW: WEATHER input (GM-only, drives the display on the left) -->
+          <div class="dg-time-row">
+            <label class="dg-time-label" for="dg-time-input-weather">WEATHER</label>
+            <input id="dg-time-input-weather"
+                   class="dg-input"
+                   type="text"
+                   placeholder="Clear, light rain, heavy fog…">
+          </div>
+
+          <div class="dg-time-row dg-time-advance-row">
+            <span class="dg-time-label">ADVANCE</span>
+            <div class="dg-time-advance-buttons">
+              <button class="dg-button"
+                      data-dg-time-advance="5">+5 MIN</button>
+              <button class="dg-button"
+                      data-dg-time-advance="15">+15 MIN</button>
+              <button class="dg-button"
+                      data-dg-time-advance="60">+1 HOUR</button>
+              <button class="dg-button"
+                      data-dg-time-advance="240">+4 HOURS</button>
+            </div>
+          </div>
+
+          <div class="dg-time-row">
+            <button id="dg-time-toggle-run"
+                    class="dg-button"
+                    type="button">
+              START CLOCK
+            </button>
+
+            <button id="dg-time-reset"
+                    class="dg-button"
+                    type="button">
+              RESET
+            </button>
+
+            <button type="submit" class="dg-button">
+              APPLY
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>

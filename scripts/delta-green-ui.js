@@ -17,6 +17,7 @@ import { BankingManager } from "./banking-manager.js";
 import { CombatManager } from "./combat-manager.js";
 import { HealthManager } from "./health-manager.js";
 import { WeaponSoundManager } from "./sound-manager.js";
+import { TimeManager } from "./time-manager.js";
 
 // Use the namespaced Handlebars helpers (avoids global deprecation warnings)
 const { renderTemplate, loadTemplates } = foundry.applications.handlebars;
@@ -106,6 +107,56 @@ const DG_FONT_CHOICES = [
   { key: "DG DTK BIOS-2y",         label: "DTK BIOS-2y" }
 ];
 
+// ---------------------------------------------------------------------------
+// Merge DG CRT fonts + Foundry's CONFIG.fontDefinitions into one choice list
+// ---------------------------------------------------------------------------
+function buildCrtFontChoices() {
+  const choices = {
+    "": "Module Default (DG One / Cordata)"
+  };
+
+  // 1) DG-specific CRT bitmap fonts
+  for (const font of DG_FONT_CHOICES) {
+    choices[font.key] = `${font.label} (DG)`;
+  }
+
+  // 2) Foundry-wide font definitions (system + other modules)
+  try {
+    const defs = CONFIG?.fontDefinitions || {};
+    for (const [key, def] of Object.entries(defs)) {
+      if (!key) continue;
+      // Don't overwrite DG entries if names collide
+      if (choices[key]) continue;
+
+      let label = key;
+
+      if (def) {
+        // Prefer a string .label if present
+        if (typeof def.label === "string" && def.label.trim()) {
+          label = def.label.trim();
+        }
+        // Fallback: string .editor, but only if it's actually a string, not boolean
+        else if (typeof def.editor === "string" && def.editor.trim()) {
+          label = def.editor.trim();
+        }
+        // Fallback: first font's family name
+        else if (Array.isArray(def.fonts) && def.fonts.length > 0) {
+          const fam = def.fonts[0]?.family;
+          if (typeof fam === "string" && fam.trim()) {
+            label = fam.trim();
+          }
+        }
+      }
+
+      choices[key] = `${label} (System)`;
+    }
+  } catch (err) {
+    console.warn("Delta Green UI | Error reading CONFIG.fontDefinitions for CRT fonts:", err);
+  }
+
+  return choices;
+}
+
 /* ----------------------------------------------------------------------------
  * Seed a default typed skill on brand-new agent/npc actors (not imports)
  * ------------------------------------------------------------------------- */
@@ -137,7 +188,7 @@ export class DeltaGreenUI {
 
   // z-index for the CRT bar; popups will be forced ABOVE this
   static zIndex = 30;
-
+  static timeHudInterval = null;
   // Available base themes in rotation order
   static THEMES = ["amber", "green", "blue", "purple", "red", "white"];
 
@@ -167,6 +218,7 @@ export class DeltaGreenUI {
     `;
     document.body.appendChild(wrap);
     DeltaGreenUI.applyLayoutSettings?.();
+
     // Wire click -> move token one grid cell
     $(document)
       .off("click.dgCompass", "#dg-token-compass .dg-compass-btn")
@@ -231,6 +283,21 @@ export class DeltaGreenUI {
     return shortName.toUpperCase();
   }
 
+  // Format world clock as mm/dd/yy HH:MM:SS
+  static _formatWorldClock(date) {
+    if (!(date instanceof Date)) return "";
+
+    const pad = (n) => String(n).padStart(2, "0");
+    const dd = pad(date.getDate());
+    const mm = pad(date.getMonth() + 1);
+    const yy = String(date.getFullYear()).slice(-2);
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    const ss = pad(date.getSeconds());
+
+    return `${mm}/${dd}/${yy} ${hh}:${mi}:${ss}`;
+  }
+
   // Map numeric track → vague descriptor + level
   static _statusDescriptor(kind, value, max) {
     if (value == null || max == null || max <= 0) {
@@ -269,7 +336,7 @@ export class DeltaGreenUI {
     return { text: vocab[level], level };
   }
 
-  // Layout toggles: skillbar + token D-pad
+  // Layout toggles: skillbar + token D-pad + mini roll feed
   static applyLayoutSettings() {
     try {
       const showSkillBar      = game.settings.get("deltagreen-custom-ui", "showSkillBar");
@@ -281,143 +348,170 @@ export class DeltaGreenUI {
       root.classList.toggle("dg-hide-skillbar",      !showSkillBar);
       root.classList.toggle("dg-hide-token-dpad",    !showTokenDpad);
       root.classList.toggle("dg-hide-mini-rollfeed", !showMiniRollFeed);
-
-      // Optional: quick debug if you want to confirm it’s firing:
-      // console.log("DG UI | layout flags", { showSkillBar, showTokenDpad, showMiniRollFeed });
     } catch (err) {
       console.error("Delta Green UI | applyLayoutSettings error", err);
     }
   }
 
+  /* ----------------------------------------------------------------------- */
+  /*  TOP-RIGHT STATUS BAR (NAME + HP/WP/SAN VAGUE TEXT + TIME HUD)          */
+  /* ----------------------------------------------------------------------- */
 
-/* ----------------------------------------------------------------------- */
-/*  TOP-RIGHT STATUS BAR (NAME + HP/WP/SAN VAGUE TEXT)                     */
-/* ----------------------------------------------------------------------- */
+  // HP / WP / SAN TOP BAR — HP/WP use same data lookup as MailSystem.refreshHpWpPanel,
+  // SAN uses same ratio logic as MailSystem._refreshSanButtonStatus
+  static updateTopStatusBar(actorArg = null) {
+    const agentEl = document.getElementById("dg-status-agent");
+    const hpEl    = document.getElementById("dg-status-hp");
+    const wpEl    = document.getElementById("dg-status-wp");
+    const sanEl   = document.getElementById("dg-status-san");
+    const timeEl  = document.getElementById("dg-status-time");
 
-// HP / WP / SAN TOP BAR — HP/WP use same data lookup as MailSystem.refreshHpWpPanel,
-// SAN uses same ratio logic as MailSystem._refreshSanButtonStatus
-static updateTopStatusBar(actorArg = null) {
-  const agentEl = document.getElementById("dg-status-agent");
-  const hpEl    = document.getElementById("dg-status-hp");
-  const wpEl    = document.getElementById("dg-status-wp");
-  const sanEl   = document.getElementById("dg-status-san");
+    // If the status bar isn't in the DOM yet, bail quietly
+    if (!agentEl && !hpEl && !wpEl && !sanEl && !timeEl) return;
 
-  // If the status bar isn't in the DOM yet, bail quietly
-  if (!agentEl && !hpEl && !wpEl && !sanEl) return;
+    const current = actorArg || this._getCurrentActor();
 
-  const current = actorArg || this._getCurrentActor();
+    if (!current) {
+      if (agentEl) agentEl.textContent = "AGENT: NONE";
+      if (hpEl)    hpEl.textContent    = "HP: N/A";
+      if (wpEl)    wpEl.textContent    = "WP: N/A";
+      if (sanEl)   sanEl.textContent   = "SAN: N/A";
+    } else {
+      if (agentEl) {
+        agentEl.textContent = `AGENT: ${this._getShortAgentName(current)}`;
+      }
+    }
 
-  if (!current) {
-    if (agentEl) agentEl.textContent = "AGENT: NONE";
-    if (hpEl)    hpEl.textContent    = "HP: N/A";
-    if (wpEl)    wpEl.textContent    = "WP: N/A";
-    if (sanEl)   sanEl.textContent   = "SAN: N/A";
-    return;
-  }
+    // ---- HP / WP: same property lookup as MailSystem.refreshHpWpPanel ----
+    if (current) {
+      const hpCurrent = Number(
+        foundry.utils.getProperty(current, "system.hp.value") ??
+        foundry.utils.getProperty(current, "system.health.value") ??
+        0
+      );
+      const hpMax = Number(
+        foundry.utils.getProperty(current, "system.hp.max") ??
+        foundry.utils.getProperty(current, "system.health.max") ??
+        foundry.utils.getProperty(current, "system.hp.value") ??
+        0
+      );
 
-  if (agentEl) {
-    agentEl.textContent = `AGENT: ${this._getShortAgentName(current)}`;
-  }
+      const wpCurrent = Number(
+        foundry.utils.getProperty(current, "system.wp.value") ?? 0
+      );
+      const wpMax = Number(
+        foundry.utils.getProperty(current, "system.wp.max") ??
+        foundry.utils.getProperty(current, "system.wp.value") ??
+        0
+      );
 
-  // ---- HP / WP: same property lookup as MailSystem.refreshHpWpPanel ----
-  const hpCurrent = Number(
-    foundry.utils.getProperty(current, "system.hp.value") ??
-    foundry.utils.getProperty(current, "system.health.value") ??
-    0
-  );
-  const hpMax = Number(
-    foundry.utils.getProperty(current, "system.hp.max") ??
-    foundry.utils.getProperty(current, "system.health.max") ??
-    foundry.utils.getProperty(current, "system.hp.value") ??
-    0
-  );
+      const hpDesc = this._statusDescriptor("hp",  hpCurrent, hpMax);
+      const wpDesc = this._statusDescriptor("wp",  wpCurrent, wpMax);
 
-  const wpCurrent = Number(
-    foundry.utils.getProperty(current, "system.wp.value") ?? 0
-  );
-  const wpMax = Number(
-    foundry.utils.getProperty(current, "system.wp.max") ??
-    foundry.utils.getProperty(current, "system.wp.value") ??
-    0
-  );
+      // ---- SAN: same ratio logic as MailSystem._refreshSanButtonStatus ----
+      let sanDesc;
+      try {
+        const sanCurrent = Number(
+          foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+        );
+        const sanMax = Number(
+          foundry.utils.getProperty(current, "system.sanity.max") ?? 99
+        );
+        const breakingPoint = Number(
+          foundry.utils.getProperty(
+            current,
+            "system.sanity.currentBreakingPoint"
+          )
+        );
 
-  const hpDesc = this._statusDescriptor("hp",  hpCurrent, hpMax);
-  const wpDesc = this._statusDescriptor("wp",  wpCurrent, wpMax);
+        if (
+          Number.isFinite(sanCurrent) &&
+          Number.isFinite(breakingPoint) &&
+          breakingPoint > 0
+        ) {
+          const ratio = sanCurrent / breakingPoint;
+          let text;
+          let level;
 
-  // ---- SAN: same ratio logic as MailSystem._refreshSanButtonStatus ----
-  let sanDesc;
-  try {
-    const sanCurrent = Number(
-      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
-    );
-    const sanMax = Number(
-      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
-    );
-    const breakingPoint = Number(
-      foundry.utils.getProperty(
-        current,
-        "system.sanity.currentBreakingPoint"
-      )
-    );
+          if (ratio >= 1.5) {
+            text = "GROUNDED";
+            level = "good";
+          } else if (ratio >= 1.1) {
+            text = "STABLE";
+            level = "good";
+          } else if (ratio >= 0.8) {
+            text = "FRAYED";
+            level = "warn";
+          } else if (ratio >= 0.5) {
+            text = "UNRAVELLING";
+            level = "warn";
+          } else {
+            text = "COMPROMISED";
+            level = "bad";
+          }
 
-    if (
-      Number.isFinite(sanCurrent) &&
-      Number.isFinite(breakingPoint) &&
-      breakingPoint > 0
-    ) {
-      const ratio = sanCurrent / breakingPoint;
-      let text;
-      let level;
-
-      if (ratio >= 1.5) {
-        text = "GROUNDED";
-        level = "good";
-      } else if (ratio >= 1.1) {
-        text = "STABLE";
-        level = "good";
-      } else if (ratio >= 0.8) {
-        text = "FRAYED";
-        level = "warn";
-      } else if (ratio >= 0.5) {
-        text = "UNRAVELLING";
-        level = "warn";
-      } else {
-        text = "COMPROMISED";
-        level = "bad";
+          sanDesc = { text, level };
+        } else {
+          // Fallback to generic descriptor if BP info is missing
+          sanDesc = this._statusDescriptor("san", sanCurrent, sanMax);
+        }
+      } catch (e) {
+        console.warn("Delta Green UI | SAN descriptor fallback:", e);
+        // Fallback with whatever we can read
+        const sanCurrent = Number(
+          foundry.utils.getProperty(current, "system.sanity.value") ?? 0
+        );
+        const sanMax = Number(
+          foundry.utils.getProperty(current, "system.sanity.max") ?? 99
+        );
+        sanDesc = this._statusDescriptor("san", sanCurrent, sanMax);
       }
 
-      sanDesc = { text, level };
-    } else {
-      // Fallback to generic descriptor if BP info is missing
-      sanDesc = this._statusDescriptor("san", sanCurrent, sanMax);
+      const apply = (el, label, desc) => {
+        if (!el || !desc) return;
+        el.textContent = `${label}: ${desc.text}`;
+        el.classList.remove("dg-status-good", "dg-status-warn", "dg-status-bad");
+        if (desc.level === "good") el.classList.add("dg-status-good");
+        else if (desc.level === "warn") el.classList.add("dg-status-warn");
+        else if (desc.level === "bad") el.classList.add("dg-status-bad");
+      };
+
+      apply(hpEl,  "HP",  hpDesc);
+      apply(wpEl,  "WP",  wpDesc);
+      apply(sanEl, "SAN", sanDesc);
     }
-  } catch (e) {
-    console.warn("Delta Green UI | SAN descriptor fallback:", e);
-    // Fallback with whatever we can read
-    const sanCurrent = Number(
-      foundry.utils.getProperty(current, "system.sanity.value") ?? 0
-    );
-    const sanMax = Number(
-      foundry.utils.getProperty(current, "system.sanity.max") ?? 99
-    );
-    sanDesc = this._statusDescriptor("san", sanCurrent, sanMax);
+
+    // --- TIME HUD: controlled by GM settings -------------------------------
+    try {
+      if (timeEl) {
+        const hudMode = game.settings.get(this.ID, "timeHudMode") || "operation";
+        const timeTabEnabled = game.settings.get(this.ID, "enableTimeTab") !== false;
+
+        // If TIME tab is disabled and HUD mode is "operation",
+        // automatically fall back to local client time.
+        const effectiveMode =
+          !timeTabEnabled && hudMode === "operation" ? "local" : hudMode;
+
+        if (effectiveMode === "hidden") {
+          timeEl.textContent = "";
+        } else if (effectiveMode === "local") {
+          // Client local time
+          timeEl.textContent = this._formatWorldClock(new Date());
+        } else {
+          // Operation time via TimeManager (fallback to local if missing)
+          if (TimeManager?.getCurrentWorldDate) {
+            const nowWorld = TimeManager.getCurrentWorldDate();
+            timeEl.textContent = this._formatWorldClock(nowWorld);
+          } else {
+            timeEl.textContent = this._formatWorldClock(new Date());
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Delta Green UI | Error updating HUD time:", err);
+      if (timeEl) timeEl.textContent = "";
+    }
   }
-
-  const apply = (el, label, desc) => {
-    if (!el || !desc) return;
-    el.textContent = `${label}: ${desc.text}`;
-    el.classList.remove("dg-status-good", "dg-status-warn", "dg-status-bad");
-    if (desc.level === "good") el.classList.add("dg-status-good");
-    else if (desc.level === "warn") el.classList.add("dg-status-warn");
-    else if (desc.level === "bad") el.classList.add("dg-status-bad");
-  };
-
-  apply(hpEl,  "HP",  hpDesc);
-  apply(wpEl,  "WP",  wpDesc);
-  apply(sanEl, "SAN", sanDesc);
-}
-
-
 
   /* ----------------------------------------------------------------------- */
   /*  FLOATING BOTTOM HOTBAR (MAIL-SYSTEM SKILLS + WEAPONS)                  */
@@ -499,9 +593,9 @@ static updateTopStatusBar(actorArg = null) {
           <div class="dg-mail-skillbar dg-mail-modbar">
             <button class="dg-button dg-mod-btn" data-mod="-40">-40</button>
             <button class="dg-button dg-mod-btn" data-mod="-20">-20</button>
-			<button class="dg-button dg-mod-btn" data-mod="-10">-10</button>
+            <button class="dg-button dg-mod-btn" data-mod="-10">-10</button>
             <button class="dg-button dg-mod-btn" data-mod="0">0</button>
-			<button class="dg-button dg-mod-btn" data-mod="10">+10</button>
+            <button class="dg-button dg-mod-btn" data-mod="10">+10</button>
             <button class="dg-button dg-mod-btn" data-mod="20">+20</button>
             <button class="dg-button dg-mod-btn" data-mod="40">+40</button>
           </div>
@@ -591,12 +685,12 @@ static updateTopStatusBar(actorArg = null) {
   /*  MINI CHAT / ROLL FEED WINDOW (BOTTOM-LEFT)                             */
   /* ----------------------------------------------------------------------- */
 
-static _injectMiniChatWindow() {
-  if (document.getElementById("dg-mini-chat")) return;
+  static _injectMiniChatWindow() {
+    if (document.getElementById("dg-mini-chat")) return;
 
-  const wrap = document.createElement("div");
-  wrap.id = "dg-mini-chat";
-  wrap.innerHTML = `
+    const wrap = document.createElement("div");
+    wrap.id = "dg-mini-chat";
+    wrap.innerHTML = `
       <div id="dg-mini-chat-header">
         <span id="dg-mini-chat-title">ROLL FEED</span>
         <button id="dg-mini-chat-toggle" class="dg-button dg-mini-chat-toggle">
@@ -605,77 +699,76 @@ static _injectMiniChatWindow() {
       </div>
       <div id="dg-mini-chat-body"></div>
     `;
-  document.body.appendChild(wrap);
-  DeltaGreenUI.applyLayoutSettings?.();
+    document.body.appendChild(wrap);
+    DeltaGreenUI.applyLayoutSettings?.();
 
-  // Toggle collapse/expand
-  $(document)
-    .off("click.dgMiniChatToggle", "#dg-mini-chat-toggle")
-    .on("click.dgMiniChatToggle", "#dg-mini-chat-toggle", (ev) => {
-      ev.preventDefault();
-      const body = document.getElementById("dg-mini-chat-body");
-      const btn = ev.currentTarget;
-      if (!body || !btn) return;
+    // Toggle collapse/expand
+    $(document)
+      .off("click.dgMiniChatToggle", "#dg-mini-chat-toggle")
+      .on("click.dgMiniChatToggle", "#dg-mini-chat-toggle", (ev) => {
+        ev.preventDefault();
+        const body = document.getElementById("dg-mini-chat-body");
+        const btn = ev.currentTarget;
+        if (!body || !btn) return;
 
-      const isHidden =
-        body.style.display === "none" ||
-        getComputedStyle(body).display === "none";
+        const isHidden =
+          body.style.display === "none" ||
+          getComputedStyle(body).display === "none";
 
-      if (isHidden) {
-        body.style.display = "";
-        btn.textContent = "▾"; // expanded (arrow down)
-      } else {
-        body.style.display = "none";
-        btn.textContent = "▴"; // collapsed (arrow up)
-      }
-    });
-}
-
-/**
- * Mini roll feed: mirror the RollsManager (same source as the ROLLS view).
- * Ignores arguments and just reads RollsManager.rolls.
- */
-static updateMiniChatWindow(_messages = null) {
-  try {
-    const body = document.getElementById("dg-mini-chat-body");
-    if (!body) return;
-
-    body.innerHTML = "";
-
-    // Require RollsManager + some rolls
-    if (!RollsManager || !Array.isArray(RollsManager.rolls) || !RollsManager.rolls.length) {
-      body.innerHTML = `<div class="dg-mini-chat-entry dg-placeholder">NO ROLLS YET</div>`;
-      return;
-    }
-
-    // Last few rolls only (keep it tight)
-    const recent = RollsManager.rolls.slice(-6);
-
-    for (const entryData of recent) {
-      const entry = document.createElement("div");
-      entry.className = "dg-mini-chat-entry";
-
-      // Sender like ROLLS window
-      const sender = document.createElement("div");
-      sender.classList.add("dg-rolls-sender");
-      sender.textContent = entryData.sender;
-      entry.appendChild(sender);
-
-      // Content is same HTML RollsManager uses (.dg-roll-result, etc.)
-      const content = document.createElement("div");
-      content.classList.add("dg-rolls-content");
-      content.innerHTML = entryData.content || "";
-      entry.appendChild(content);
-
-      body.appendChild(entry);
-    }
-
-    body.scrollTop = body.scrollHeight;
-  } catch (err) {
-    console.error("Delta Green UI | Error updating mini chat window:", err);
+        if (isHidden) {
+          body.style.display = "";
+          btn.textContent = "▾"; // expanded (arrow down)
+        } else {
+          body.style.display = "none";
+          btn.textContent = "▴"; // collapsed (arrow up)
+        }
+      });
   }
-}
 
+  /**
+   * Mini roll feed: mirror the RollsManager (same source as the ROLLS view).
+   * Ignores arguments and just reads RollsManager.rolls.
+   */
+  static updateMiniChatWindow(_messages = null) {
+    try {
+      const body = document.getElementById("dg-mini-chat-body");
+      if (!body) return;
+
+      body.innerHTML = "";
+
+      // Require RollsManager + some rolls
+      if (!RollsManager || !Array.isArray(RollsManager.rolls) || !RollsManager.rolls.length) {
+        body.innerHTML = `<div class="dg-mini-chat-entry dg-placeholder">NO ROLLS YET</div>`;
+        return;
+      }
+
+      // Last few rolls only (keep it tight)
+      const recent = RollsManager.rolls.slice(-6);
+
+      for (const entryData of recent) {
+        const entry = document.createElement("div");
+        entry.className = "dg-mini-chat-entry";
+
+        // Sender like ROLLS window
+        const sender = document.createElement("div");
+        sender.classList.add("dg-rolls-sender");
+        sender.textContent = entryData.sender;
+        entry.appendChild(sender);
+
+        // Content is same HTML RollsManager uses (.dg-roll-result, etc.)
+        const content = document.createElement("div");
+        content.classList.add("dg-rolls-content");
+        content.innerHTML = entryData.content || "";
+        entry.appendChild(content);
+
+        body.appendChild(entry);
+      }
+
+      body.scrollTop = body.scrollHeight;
+    } catch (err) {
+      console.error("Delta Green UI | Error updating mini chat window:", err);
+    }
+  }
 
   /* ------------------------------- Journals ------------------------------- */
 
@@ -784,7 +877,53 @@ static updateMiniChatWindow(_messages = null) {
   }
 
   static registerSettings() {
-    // Layout toggles (skillbar + token D-pad)
+    // --- GM: per-tab visibility for players --------------------------------
+    game.settings.register(this.ID, "enableBankingTab", {
+      name: "Enable Banking Tab for Players",
+      hint: "If disabled, the BANK tab is hidden for non-GM users.",
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: true,
+      restricted: true, // GM-only
+      onChange: () => {
+        if (game.ready) DeltaGreenUI.applyTabVisibility?.();
+      }
+    });
+
+    game.settings.register(this.ID, "enableTimeTab", {
+      name: "Enable Time Tab for Players",
+      hint: "If disabled, the TIME tab is hidden for non-GM users.",
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: true,
+      restricted: true,
+      onChange: () => {
+        if (game.ready) {
+          DeltaGreenUI.applyTabVisibility?.();
+          DeltaGreenUI.updateTopStatusBar?.();
+        }
+      }
+    });
+
+    // --- GM: HUD clock behavior --------------------------------------------
+    game.settings.register(this.ID, "timeHudMode", {
+      name: "HUD Clock Mode",
+      hint: "Controls what the top-right clock shows.",
+      scope: "world",
+      config: true,
+      type: String,
+      default: "operation",
+      choices: {
+        operation: "Operation Time (Time Manager)",
+        local: "Local Real Time",
+        hidden: "Hidden (no clock)"
+      },
+      restricted: true,
+      onChange: () => DeltaGreenUI.updateTopStatusBar?.()
+    });
+
     game.settings.register("deltagreen-custom-ui", "showSkillBar", {
       name: "Show DG Skill Hotbar",
       hint: "Display the bottom DG skill hotbar overlay.",
@@ -808,30 +947,31 @@ static updateMiniChatWindow(_messages = null) {
         DeltaGreenUI.applyLayoutSettings?.();
       }
     });
-game.settings.register("deltagreen-custom-ui", "showMiniRollFeed", {
-  name: "Show DG Mini Roll Feed",
-  hint: "Display the mini roll feed window in the bottom-left.",
-  scope: "client",
-  config: true,
-  type: Boolean,
-  default: true,
-  onChange: () => {
-    DeltaGreenUI.applyLayoutSettings?.();
-  }
-});
 
-game.settings.register(this.ID, "scanlineIntensity", {
-  name: "CRT Scanline Intensity",
-  hint: "Controls opacity of the CRT scanline overlay (0 = off, 100 = very strong).",
-  scope: "client",
-  config: true,
-  type: Number,
-  default: 40, // ~0.40 opacity
-  range: { min: 0, max: 100, step: 5 },
-  onChange: (value) => {
-    DeltaGreenUI.applyScanlineIntensity?.(value);
-  }
-});
+    game.settings.register("deltagreen-custom-ui", "showMiniRollFeed", {
+      name: "Show DG Mini Roll Feed",
+      hint: "Display the mini roll feed window in the bottom-left.",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: true,
+      onChange: () => {
+        DeltaGreenUI.applyLayoutSettings?.();
+      }
+    });
+
+    game.settings.register(this.ID, "scanlineIntensity", {
+      name: "CRT Scanline Intensity",
+      hint: "Controls opacity of the CRT scanline overlay (0 = off, 100 = very strong).",
+      scope: "client",
+      config: true,
+      type: Number,
+      default: 40, // ~0.40 opacity
+      range: { min: 0, max: 100, step: 5 },
+      onChange: (value) => {
+        DeltaGreenUI.applyScanlineIntensity?.(value);
+      }
+    });
 
     // UPDATED: multi-color theme selector
     game.settings.register(this.ID, "theme", {
@@ -874,16 +1014,14 @@ game.settings.register(this.ID, "scanlineIntensity", {
 
     // Per-player color overrides
     ColorThemeManager.registerSettings();
-  WeaponSoundManager.registerSettings();
-    // CRT font choice per client (used by both settings UI and CRT dropdown)
-    const fontChoices = {};
-    for (const font of DG_FONT_CHOICES) {
-      fontChoices[font.key] = font.label;
-    }
+    WeaponSoundManager.registerSettings();
+
+    // CRT font choice per client (DG CRT fonts + any fonts registered in Foundry)
+    const fontChoices = buildCrtFontChoices();
 
     game.settings.register(this.ID, "crtFont", {
       name: "CRT Font",
-      hint: "Preferred CRT font for this client",
+      hint: "Preferred CRT font for this client (DG CRT fonts + system fonts from Foundry)",
       scope: "client",
       config: true,
       type: String,
@@ -891,7 +1029,6 @@ game.settings.register(this.ID, "scanlineIntensity", {
       default: "",
       onChange: (value) => this.applyFont(value)
     });
-	
   }
 
   /* ------------------------------- Hooks ---------------------------------- */
@@ -899,25 +1036,23 @@ game.settings.register(this.ID, "scanlineIntensity", {
   static initHooks() {
     Hooks.on("ready", () => this.onReady());
 
-// Foundry V13+ uses renderChatMessageHTML (HTMLElement instead of jQuery)
-Hooks.on("renderChatMessageHTML", (message, html, data) => {
-  const $html = html instanceof jQuery ? html : $(html);
+    // Foundry V13+ uses renderChatMessageHTML (HTMLElement instead of jQuery)
+    Hooks.on("renderChatMessageHTML", (message, html, data) => {
+      const $html = html instanceof jQuery ? html : $(html);
 
-  // If the CRT isn’t active, this hook does nothing
-  if (!this.isInterfaceActive()) return;
+      // If the CRT isn’t active, this hook does nothing
+      if (!this.isInterfaceActive()) return;
 
-  setTimeout(() => {
-    MailSystem.renderChatMessage(message, $html, data);
-    DeltaGreenUI.updateRollsLastResult?.(message, $html, data);
-    DeltaGreenUI.updateMiniChatWindow(); // keep mini roll feed in sync with RollsManager
-  }, 0);
+      setTimeout(() => {
+        MailSystem.renderChatMessage(message, $html, data);
+        DeltaGreenUI.updateRollsLastResult?.(message, $html, data);
+        DeltaGreenUI.updateMiniChatWindow(); // keep mini roll feed in sync with RollsManager
+      }, 0);
 
-  if (message.flavor && message.flavor.includes("Unregistered Activity")) {
-    this.styleRollMessage($html);
-  }
-});
-
-
+      if (message.flavor && message.flavor.includes("Unregistered Activity")) {
+        this.styleRollMessage($html);
+      }
+    });
 
     // Track "last viewed" time for actor sheets (for LAST ENTRIES ordering)
     Hooks.on("renderActorSheet", (sheet) => {
@@ -931,6 +1066,7 @@ Hooks.on("renderChatMessageHTML", (message, html, data) => {
       this.loadLastEntries();
       this._kickDeferredRefresh();
     });
+
     Hooks.on("updateActor", (actor) => {
       if (!this.isInterfaceActive()) return;
 
@@ -965,85 +1101,92 @@ Hooks.on("renderChatMessageHTML", (message, html, data) => {
 
   /* ------------------------------- Ready ---------------------------------- */
 
-static async onReady() {
-  console.log("Delta Green UI | onReady");
+  static async onReady() {
+    console.log("Delta Green UI | onReady");
 
-  try {
-    // 1) Theme + font immediately (safe)
-    const theme = game.settings.get(this.ID, "theme");
-    this.applyTheme(theme);
+    try {
+      // 1) Theme + font immediately (safe)
+      const theme = game.settings.get(this.ID, "theme");
+      this.applyTheme(theme);
 
-    const crtFont = game.settings.get(this.ID, "crtFont") || "";
-    this.applyFont(crtFont);
+      const crtFont = game.settings.get(this.ID, "crtFont") || "";
+      this.applyFont(crtFont);
 
-    // 1b) Apply layout visibility (skillbar + D-pad + mini roll feed)
-    this.applyLayoutSettings();
+      // 1b) Apply layout visibility (skillbar + D-pad + mini roll feed)
+      this.applyLayoutSettings();
 
-    // 2) Ensure PC Records folder exists BEFORE anything can create actors
-    await this.createPCRecordsFolder();
+      // 2) Ensure PC Records folder exists BEFORE anything can create actors
+      await this.createPCRecordsFolder();
 
-    // 3) Load all partial templates first (verifies they exist)
-    await this.loadTemplates();
+      // 3) Load all partial templates first (verifies they exist)
+      await this.loadTemplates();
 
-    // 4) Render main interface into DOM so subsequent UI init has elements
-    const rendered = await this.renderInterface();
-    if (!rendered) return;
+      // 4) Render main interface into DOM so subsequent UI init has elements
+      const rendered = await this.renderInterface();
+      if (!rendered) return;
 
-    // 5) Ensure popups (journals, items, etc.) always sit above the CRT
-    this.enforcePopupZIndex();
+      // 5) Ensure popups (journals, items, etc.) always sit above the CRT
+      this.enforcePopupZIndex();
 
-    // Scanline intensity
-    const scanIntensity = game.settings.get(this.ID, "scanlineIntensity");
-    this.applyScanlineIntensity(scanIntensity);
+      // Scanline intensity
+      const scanIntensity = game.settings.get(this.ID, "scanlineIntensity");
+      this.applyScanlineIntensity(scanIntensity);
 
-    // 6) Now that DOM exists, init feature modules
-    UIComponents.init();
-    RecordsManager.init();
-    MailSystem.init();
-    JournalManager.init();
-    InventoryManager.init();
-    PsycheManager.init();
-    BankingManager.init();
-    CombatManager.init();
-	HealthManager.init(); 
-    // NOTE: RollsManager.init() is NOT called here; it self-inits on "ready"
+      // 6) Now that DOM exists, init feature modules
+      UIComponents.init();
+      RecordsManager.init();
+      MailSystem.init();
+      JournalManager.init();
+      InventoryManager.init();
+      PsycheManager.init();
+      BankingManager.init();
+      CombatManager.init();
+      HealthManager.init();
+      TimeManager.init?.();
+      // NOTE: RollsManager.init() is NOT called here; it self-inits on "ready"
 
-    // 7) CRT is always available
-    setTimeout(() => {
-      if ($("#dg-crt-container").length) {
-        $("#dg-crt-container").show();
-        game.user.setFlag(this.ID, "interfaceActive", true);
+      // 7) CRT is always available
+      setTimeout(() => {
+        if ($("#dg-crt-container").length) {
+          $("#dg-crt-container").show();
+          game.user.setFlag(this.ID, "interfaceActive", true);
 
-        // NEW: mark that CRT overlay is visible for everyone
-        $("body").addClass("dg-crt-on");
+          // NEW: mark that CRT overlay is visible for everyone
+          $("body").addClass("dg-crt-on");
 
-        // Players: hide core UI, add overlay class
-        if (!game.user.isGM) {
-          $("body").addClass("dg-crt-active");
-          this.hideFoundryCoreUi();
+          // Players: hide core UI, add overlay class
+          if (!game.user.isGM) {
+            $("body").addClass("dg-crt-active");
+            this.hideFoundryCoreUi();
+          } else {
+            // GM: never hide core UI, never use dg-crt-active
+            $("body").removeClass("dg-crt-active");
+          }
+
+          this.updateTopStatusBar();
+          this.refreshBottomHotbar();
+          this.loadLastEntries();
+          this.moveDiceTrayToMail();
+          this._injectTokenCompass();
+          this._injectMiniChatWindow();
+          this.updateMiniChatWindow(); // draw mini roll feed once UI is live
+
+          if (!DeltaGreenUI.timeHudInterval) {
+            DeltaGreenUI.timeHudInterval = setInterval(() => {
+              if (!DeltaGreenUI.isInterfaceActive()) return;
+              DeltaGreenUI.updateTopStatusBar();
+            }, 1000);
+          }
         } else {
-          // GM: never hide core UI, never use dg-crt-active
-          $("body").removeClass("dg-crt-active");
+          console.error("Delta Green UI | Container not found after render");
+          ui.notifications.error("Error activating Delta Green UI interface");
         }
-
-        this.updateTopStatusBar();
-        this.refreshBottomHotbar();
-        this.loadLastEntries();
-        this.moveDiceTrayToMail();
-        this._injectTokenCompass();
-        this._injectMiniChatWindow();
-        this.updateMiniChatWindow(); // draw mini roll feed once UI is live
-
-      } else {
-        console.error("Delta Green UI | Container not found after render");
-        ui.notifications.error("Error activating Delta Green UI interface");
-      }
-    }, 400);
-  } catch (error) {
-    console.error("Delta Green UI | Error in onReady:", error);
-    ui.notifications.error("Error initializing Delta Green UI");
+      }, 400);
+    } catch (error) {
+      console.error("Delta Green UI | Error in onReady:", error);
+      ui.notifications.error("Error initializing Delta Green UI");
+    }
   }
-}
 
   /* --------------------------- Web View toggles --------------------------- */
 
@@ -1069,6 +1212,73 @@ static async onReady() {
       return false;
     }
   }
+
+  /**
+   * Hide certain tabs/views for non-GM users based on GM settings.
+   * GM always sees all tabs.
+   */
+/**
+ * Hide Banking / Time tabs for everyone when disabled.
+ * GM still controls the setting, but the visibility applies to GM and players.
+ */
+/**
+ * Hide Banking / Time tabs when disabled.
+ * Visibility rules apply equally to GM and players.
+ */
+static applyTabVisibility() {
+  try {
+    const bankingEnabled = game.settings.get(this.ID, "enableBankingTab") !== false;
+    const timeEnabled    = game.settings.get(this.ID, "enableTimeTab")    !== false;
+
+    const $bankingMenu = $('.dg-menu-item[data-view="banking"]');
+    const $bankingView = $('#dg-view-banking');
+
+    const $timeMenu = $('.dg-menu-item[data-view="time"]');
+    const $timeView = $('#dg-view-time');
+
+    // ---------------- BANKING ----------------
+    if (bankingEnabled) {
+      // Show the menu item; let CSS + .active control the panel visibility
+      $bankingMenu.show();
+      // Clear any inline display override from previous .hide() calls
+      $bankingView.css("display", "");
+    } else {
+      $bankingMenu.hide();
+      // Hide the panel and make sure it can't be the active view
+      $bankingView.hide().removeClass("active");
+      if (this.currentView === "banking") {
+        this.currentView = null;
+      }
+    }
+
+    // ---------------- TIME -------------------
+    if (timeEnabled) {
+      $timeMenu.show();
+      $timeView.css("display", "");
+    } else {
+      $timeMenu.hide();
+      $timeView.hide().removeClass("active");
+      if (this.currentView === "time") {
+        this.currentView = null;
+      }
+    }
+
+    // If whatever was open just got disabled, close the dropdown cleanly
+    const $content = $("#dg-crt-content");
+    if (!this.currentView && $content.hasClass("dg-open")) {
+      $("#dg-crt-menu .dg-menu-item").removeClass("active");
+      $(".dg-view").removeClass("active");
+      $content
+        .removeClass("dg-open")
+        .slideUp(150, () => this.adjustDropdownHeight());
+    } else {
+      // Otherwise just re-measure in case visible content changed
+      this.adjustDropdownHeight();
+    }
+  } catch (err) {
+    console.error("Delta Green UI | applyTabVisibility error", err);
+  }
+}
 
   /* -------------------------------- Theme --------------------------------- */
 
@@ -1102,12 +1312,31 @@ static async onReady() {
 
       const key = (fontKey || "").trim();
 
-      // Empty -> use CSS default (DG One fallback)
+      // Empty -> use CSS default (your DG fallback in CSS)
       if (!key) {
         root.style.removeProperty("--dg-crt-font-family");
         document.body.classList.remove("dg-crt-font-custom");
       } else {
-        const cssVal = `'${key}', monospace`;
+        let family = key;
+
+        // If this key exists in CONFIG.fontDefinitions, prefer its "family"
+        try {
+          const def = CONFIG?.fontDefinitions?.[key];
+          if (def && Array.isArray(def.fonts) && def.fonts.length > 0) {
+            const first = def.fonts[0];
+            if (first?.family) {
+              family = first.family;
+            }
+          }
+        } catch (err) {
+          console.warn(
+            "Delta Green UI | Error resolving font family from CONFIG.fontDefinitions:",
+            err
+          );
+        }
+
+        // Final CSS stack: chosen family → system UI → monospace
+        const cssVal = `'${family}', system-ui, monospace`;
         root.style.setProperty("--dg-crt-font-family", cssVal);
         document.body.classList.add("dg-crt-font-custom");
       }
@@ -1119,29 +1348,30 @@ static async onReady() {
       console.error("Delta Green UI | Error applying CRT font:", e);
     }
   }
-static applyScanlineIntensity(value) {
-  try {
-    const v = Number(value);
-    const clamped = Number.isNaN(v)
-      ? 40
-      : Math.max(0, Math.min(100, v));
 
-    const opacity = clamped / 100;
-    const root = document.documentElement;
+  static applyScanlineIntensity(value) {
+    try {
+      const v = Number(value);
+      const clamped = Number.isNaN(v)
+        ? 40
+        : Math.max(0, Math.min(100, v));
 
-    // Drive it via CSS variable so the overlay can use it
-    root.style.setProperty("--dg-scanline-opacity", opacity.toString());
+      const opacity = clamped / 100;
+      const root = document.documentElement;
 
-    // Convenience class for "completely off"
-    if (clamped === 0) {
-      document.body.classList.add("dg-scanlines-off");
-    } else {
-      document.body.classList.remove("dg-scanlines-off");
+      // Drive it via CSS variable so the overlay can use it
+      root.style.setProperty("--dg-scanline-opacity", opacity.toString());
+
+      // Convenience class for "completely off"
+      if (clamped === 0) {
+        document.body.classList.add("dg-scanlines-off");
+      } else {
+        document.body.classList.remove("dg-scanlines-off");
+      }
+    } catch (err) {
+      console.error("Delta Green UI | Error applying scanline intensity:", err);
     }
-  } catch (err) {
-    console.error("Delta Green UI | Error applying scanline intensity:", err);
   }
-}
 
   static initFontDropdown() {
     const select = document.getElementById("dg-font-select");
@@ -1153,12 +1383,13 @@ static applyScanlineIntensity(value) {
     // Clear whatever is there
     select.innerHTML = "";
 
-    // Populate options from shared list
-    for (const font of DG_FONT_CHOICES) {
+    // Use the same choices as the module setting
+    const choices = buildCrtFontChoices();
+    for (const [key, label] of Object.entries(choices)) {
       const opt = document.createElement("option");
-      opt.value = font.key;
-      opt.textContent = font.label;
-      if (font.key === current) opt.selected = true;
+      opt.value = key;
+      opt.textContent = label;
+      if (key === current) opt.selected = true;
       select.appendChild(opt);
     }
 
@@ -1193,54 +1424,53 @@ static applyScanlineIntensity(value) {
     // no-op
   }
 
-static openInterface() {
-  const container = $("#dg-crt-container");
-  if (!container.length) {
-    this.renderInterface()
-      .then(() => {
-        $("#dg-crt-container").show();
-        game.user.setFlag(this.ID, "interfaceActive", true);
+  static openInterface() {
+    const container = $("#dg-crt-container");
+    if (!container.length) {
+      this.renderInterface()
+        .then(() => {
+          $("#dg-crt-container").show();
+          game.user.setFlag(this.ID, "interfaceActive", true);
 
-        // CRT visible for everyone
-        $("body").addClass("dg-crt-on");
+          // CRT visible for everyone
+          $("body").addClass("dg-crt-on");
 
-        if (!game.user.isGM) {
-          $("body").addClass("dg-crt-active");
-          this.hideFoundryCoreUi();
-        } else {
-          $("body").removeClass("dg-crt-active");
-        }
+          if (!game.user.isGM) {
+            $("body").addClass("dg-crt-active");
+            this.hideFoundryCoreUi();
+          } else {
+            $("body").removeClass("dg-crt-active");
+          }
 
-        this.moveDiceTrayToMail();
-      })
-      .catch((e) => {
-        console.error("Delta Green UI | Error rendering interface:", e);
-        ui.notifications.error("Error rendering Delta Green UI interface");
-      });
-    return;
-  }
-
-  if (!container.is(":visible")) {
-    container.show();
-    game.user.setFlag(this.ID, "interfaceActive", true);
-
-    // CRT visible for everyone
-    $("body").addClass("dg-crt-on");
-
-    if (!game.user.isGM) {
-      $("body").addClass("dg-crt-active");
-      this.hideFoundryCoreUi();
-    } else {
-      $("body").removeClass("dg-crt-active");
+          this.moveDiceTrayToMail();
+        })
+        .catch((e) => {
+          console.error("Delta Green UI | Error rendering interface:", e);
+          ui.notifications.error("Error rendering Delta Green UI interface");
+        });
+      return;
     }
 
-    this.moveDiceTrayToMail();
-    this.updateTopStatusBar();
-    this.refreshBottomHotbar();
-    this._injectTokenCompass();
-  }
-}
+    if (!container.is(":visible")) {
+      container.show();
+      game.user.setFlag(this.ID, "interfaceActive", true);
 
+      // CRT visible for everyone
+      $("body").addClass("dg-crt-on");
+
+      if (!game.user.isGM) {
+        $("body").addClass("dg-crt-active");
+        this.hideFoundryCoreUi();
+      } else {
+        $("body").removeClass("dg-crt-active");
+      }
+
+      this.moveDiceTrayToMail();
+      this.updateTopStatusBar();
+      this.refreshBottomHotbar();
+      this._injectTokenCompass();
+    }
+  }
 
   /* --------------------------- RECENT JOURNAL ENTRIES --------------------- */
 
@@ -1419,7 +1649,6 @@ static openInterface() {
       this.updateTopStatusBar();
       this.refreshBottomHotbar();
       this._injectTokenCompass();
-
     }
   }
 
@@ -1446,7 +1675,6 @@ static openInterface() {
       if ($("#dg-crt-container").length) $("#dg-crt-container").remove();
       $("body").append(template);
 
-      // We no longer show a dedicated logout button here; CRT is controlled by the module toggle.
       const isWebViewEnabled = game.settings.get(this.ID, "enableWebView");
       if (isWebViewEnabled) $("#dg-web-button").show();
       else $("#dg-web-button").hide();
@@ -1462,9 +1690,10 @@ static openInterface() {
         ["#dg-view-rolls",     `modules/${this.ID}/templates/rolls-view.html`],
         ["#dg-view-psyche",    `modules/${this.ID}/templates/psyche-view.html`],
         ["#dg-view-banking",   `modules/${this.ID}/templates/banking-view.html`],
-		["#dg-view-sound",	   `modules/${this.ID}/templates/sound-view.html`],
-		["#dg-view-combat",    `modules/${this.ID}/templates/combat-view.html`],
-	    ];
+        ["#dg-view-sound",     `modules/${this.ID}/templates/sound-view.html`],
+        ["#dg-view-combat",    `modules/${this.ID}/templates/combat-view.html`],
+        ["#dg-view-time",      `modules/${this.ID}/templates/time-view.html`]
+      ];
 
       for (const [sel, url] of paths) {
         try {
@@ -1495,12 +1724,6 @@ static openInterface() {
         ui.notifications.error("Error creating Delta Green UI interface");
         return false;
       }
-    // Close button: use delegated handler so it always works
-    $(document).on("click.dgWebWindowClose", "#dg-web-window-close", function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      $("#dg-web-overlay").hide();
-    });
 
       const theme = game.settings.get(this.ID, "theme");
       const crtFont = game.settings.get(this.ID, "crtFont") || "";
@@ -1532,6 +1755,7 @@ static openInterface() {
 
       this.initInterfaceEvents();
       this.initFontDropdown();
+      this.applyTabVisibility();
       this.updateAgentName();
       this.forceDisplayLastEntries();
       this.loadLastEntries();
@@ -1548,8 +1772,11 @@ static openInterface() {
       // Journal recent list – safe to call; no-ops if element missing
       this.loadLastJournals();
 
-      setTimeout(() => this.forceDisplayLastEntries(), 1000);
+      if (TimeManager && typeof TimeManager.refresh === "function") {
+        TimeManager.refresh();
+      }
 
+      setTimeout(() => this.forceDisplayLastEntries(), 1000);
 
       // CUSTOM HOOK so MailSystem & others know the UI DOM is ready
       Hooks.callAll("renderDeltaGreenUI");
@@ -1568,133 +1795,142 @@ static openInterface() {
 
   /* ------------------------- Interface Event Wiring ----------------------- */
 
-static initInterfaceEvents() {
-  // MAIN MENU CLICK HANDLER
-  $("#dg-crt-menu").on("click", ".dg-menu-item", function () {
-    const view = $(this).data("view");
+  static initInterfaceEvents() {
+    // MAIN MENU CLICK HANDLER
+    $("#dg-crt-menu").on("click", ".dg-menu-item", function () {
+      const view = $(this).data("view");
 
-    // Tell the HealthManager which view is active so it can hide/show itself
-    if (HealthManager && typeof HealthManager.showForView === "function") {
-      HealthManager.showForView(view);
-    }
-
-    // --- special buttons that don't use the dropdown panel ---
-    if (view === "settings") {
-      game.settings.sheet.render(true);
-      return;
-    }
-
-    if (view === "web") {
-      // WEB is a floating window, not a dropdown view
-      DeltaGreenUI.toggleWebWindow();
-      return;
-    }
-
-    if (view === "health") {
-      // Make sure the health panel refreshes when opened
-      if (HealthManager && typeof HealthManager.refresh === "function") {
-        HealthManager.refresh();
+      // Tell the HealthManager which view is active so it can hide/show itself
+      if (HealthManager && typeof HealthManager.showForView === "function") {
+        HealthManager.showForView(view);
       }
-    }
 
-    // --- views that live inside the dropdown panel ---
-    const $content = $("#dg-crt-content");
-    const $this = $(this);
+      // --- special buttons that don't use the dropdown panel ---
+      if (view === "settings") {
+        game.settings.sheet.render(true);
+        return;
+      }
 
-    const isSameView =
-      DeltaGreenUI.currentView === view && $content.is(":visible");
+      if (view === "web") {
+        // WEB is a floating window, not a dropdown view
+        DeltaGreenUI.toggleWebWindow();
+        return;
+      }
 
-    // Clicking the same menu item again closes the dropdown
-    if (isSameView) {
-      DeltaGreenUI.currentView = null;
-      $(".dg-menu-item").removeClass("active");
-      $(".dg-view").removeClass("active");
+      if (view === "health") {
+        // Make sure the health panel refreshes when opened
+        if (HealthManager && typeof HealthManager.refresh === "function") {
+          HealthManager.refresh();
+        }
+      }
 
-      $content
-        .removeClass("dg-open")
-        .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
-      return;
-    }
+      // TIME view – ensure layout exists + state is in sync
+      if (view === "time") {
+        if (TimeManager && typeof TimeManager.refresh === "function") {
+          TimeManager.refresh();
+        }
+      }
 
-    // Switch to new view
-    DeltaGreenUI.currentView = view;
+      // --- views that live inside the dropdown panel ---
+      const $content = $("#dg-crt-content");
+      const $this = $(this);
 
-    $(".dg-menu-item").removeClass("active");
-    $this.addClass("active");
+      const isSameView =
+        DeltaGreenUI.currentView === view && $content.is(":visible");
 
-    $(".dg-view").removeClass("active");
-    const $viewEl = $(`#dg-view-${view}`);
-    if ($viewEl.length) $viewEl.addClass("active");
-
-    // Open dropdown if needed
-    if (!$content.is(":visible")) {
-      $content
-        .addClass("dg-open")
-        .slideDown(150, () => DeltaGreenUI.adjustDropdownHeight());
-    } else {
-      DeltaGreenUI.adjustDropdownHeight();
-    }
-
-    // View-specific loading
-    if (view === "records")   RecordsManager.loadRecords();
-    if (view === "mail")      MailSystem.loadMessages();
-    if (view === "journal") {
-      DeltaGreenUI.loadJournals();
-      DeltaGreenUI.loadLastJournals();
-    }
-    if (view === "access")    DeltaGreenUI.loadPlayersList();
-    if (view === "system") {
-      DeltaGreenUI.forceDisplayLastEntries();
-      DeltaGreenUI.loadLastJournals();
-    }
-    if (view === "rolls")     DeltaGreenUI.loadRollsView();
-    if (view === "scene")     DeltaGreenUI.loadSceneFeed();
-    if (view === "inventory") InventoryManager.refresh();
-    if (view === "psyche")    PsycheManager.refresh();
-    if (view === "banking")   BankingManager.refresh();
-
-    // Let layout settle then re-adjust height to content
-    setTimeout(() => DeltaGreenUI.adjustDropdownHeight(), 100);
-  });
-
-  // OPEN AGENT SHEET
-  $("#dg-view-agent-sheet").on("click", () => {
-    const actor = game.user.character;
-    if (actor) actor.sheet.render(true);
-    else ui.notifications.warn(game.i18n.localize("DGUI.NoCharacterAssigned"));
-  });
-
-  // QUICK RECORDS SEARCH BUTTON
-  $("#dg-search-records-btn").on("click", () => {
-    $('.dg-menu-item[data-view="records"]').trigger("click");
-  });
-
-  // THEME CYCLE BUTTON
-  $(document).on("click", "#dg-theme-cycle-btn", (ev) => {
-    ev.preventDefault();
-    DeltaGreenUI.cycleTheme();
-  });
-
-  // HEALTH PANEL CLOSE BUTTON (safe to leave even if unused)
-  $(document)
-    .off("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']")
-    .on("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-
-      const $active = $(".dg-menu-item.active");
-      if ($active.length) {
-        $active.trigger("click");
-      } else {
+      // Clicking the same menu item again closes the dropdown
+      if (isSameView) {
         DeltaGreenUI.currentView = null;
+        $(".dg-menu-item").removeClass("active");
         $(".dg-view").removeClass("active");
-        const $content = $("#dg-crt-content");
+
         $content
           .removeClass("dg-open")
           .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
+        return;
       }
+
+      // Switch to new view
+      DeltaGreenUI.currentView = view;
+
+      $(".dg-menu-item").removeClass("active");
+      $this.addClass("active");
+
+      $(".dg-view").removeClass("active");
+
+      const $viewEl = $(`#dg-view-${view}`);
+      if ($viewEl.length) $viewEl.addClass("active");
+
+      // Open dropdown if needed
+      if (!$content.is(":visible")) {
+        $content
+          .addClass("dg-open")
+          .slideDown(150, () => DeltaGreenUI.adjustDropdownHeight());
+      } else {
+        DeltaGreenUI.adjustDropdownHeight();
+      }
+
+      // View-specific loading
+      if (view === "records")   RecordsManager.loadRecords();
+      if (view === "mail")      MailSystem.loadMessages();
+      if (view === "journal") {
+        DeltaGreenUI.loadJournals();
+        DeltaGreenUI.loadLastJournals();
+      }
+      if (view === "access")    DeltaGreenUI.loadPlayersList();
+      if (view === "system") {
+        DeltaGreenUI.forceDisplayLastEntries();
+        DeltaGreenUI.loadLastJournals();
+      }
+      if (view === "rolls")     DeltaGreenUI.loadRollsView();
+      if (view === "scene")     DeltaGreenUI.loadSceneFeed();
+      if (view === "inventory") InventoryManager.refresh();
+      if (view === "psyche")    PsycheManager.refresh();
+      if (view === "banking")   BankingManager.refresh();
+      if (view === "time")      TimeManager.refresh?.();
+
+      // Let layout settle then re-adjust height to content
+      setTimeout(() => DeltaGreenUI.adjustDropdownHeight(), 100);
     });
-}
+
+    // OPEN AGENT SHEET
+    $("#dg-view-agent-sheet").on("click", () => {
+      const actor = game.user.character;
+      if (actor) actor.sheet.render(true);
+      else ui.notifications.warn(game.i18n.localize("DGUI.NoCharacterAssigned"));
+    });
+
+    // QUICK RECORDS SEARCH BUTTON
+    $("#dg-search-records-btn").on("click", () => {
+      $('.dg-menu-item[data-view="records"]').trigger("click");
+    });
+
+    // THEME CYCLE BUTTON
+    $(document).on("click", "#dg-theme-cycle-btn", (ev) => {
+      ev.preventDefault();
+      DeltaGreenUI.cycleTheme();
+    });
+
+    // HEALTH PANEL CLOSE BUTTON (safe to leave even if unused)
+    $(document)
+      .off("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']")
+      .on("click.dgHealthClose", "#dg-view-health .dg-panel-close[data-action='close']", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const $active = $(".dg-menu-item.active");
+        if ($active.length) {
+          $active.trigger("click");
+        } else {
+          DeltaGreenUI.currentView = null;
+          $(".dg-view").removeClass("active");
+          const $content = $("#dg-crt-content");
+          $content
+            .removeClass("dg-open")
+            .slideUp(150, () => DeltaGreenUI.adjustDropdownHeight());
+        }
+      });
+  }
 
   /* ------------------------- Dropdown height helper ---------------------- */
 
@@ -1932,8 +2168,8 @@ static initInterfaceEvents() {
 
   static loadLastEntries() {
     try {
-		// 🔹 Fast bail: don’t do anything if the CRT overlay isn’t active
-  if (!this.isInterfaceActive()) return;
+      // 🔹 Fast bail: don’t do anything if the CRT overlay isn’t active
+      if (!this.isInterfaceActive()) return;
 
       // 1) Make sure we actually have a list element
       let $list = $("#dg-last-entries-list");
@@ -2187,7 +2423,7 @@ static initInterfaceEvents() {
     }
   }
 
-    /* ----------------------------- Web Window ------------------------------- */
+  /* ----------------------------- Web Window ------------------------------- */
 
   static initWebWindowEvents() {
     // Clear any old handlers in our namespace so we don't double-bind
@@ -2245,248 +2481,246 @@ static initInterfaceEvents() {
     }
   }
 
-
   // ----------------------- AUDIO CONTROLS + TICKER ----------------------- //
 
- 
-static injectAudioControls() {
-  if (document.getElementById("dg-audio-controls")) return;
+  static injectAudioControls() {
+    if (document.getElementById("dg-audio-controls")) return;
 
-  const systemView = document.getElementById("dg-view-sound");
-  if (!systemView) return;
+    const systemView = document.getElementById("dg-view-sound");
+    if (!systemView) return;
 
-  const wrap = document.createElement("div");
-  wrap.id = "dg-audio-controls";
-  wrap.classList.add("dg-section");
-  wrap.innerHTML = `
-    <div class="dg-section-title">AUDIO CONTROL</div>
+    const wrap = document.createElement("div");
+    wrap.id = "dg-audio-controls";
+    wrap.classList.add("dg-section");
+    wrap.innerHTML = `
+      <div class="dg-section-title">AUDIO CONTROL</div>
 
-    <div id="dg-audio-ticker" class="dg-audio-line">
-      NOW PLAYING: &mdash;
-    </div>
+      <div id="dg-audio-ticker" class="dg-audio-line">
+        NOW PLAYING: &mdash;
+      </div>
 
-    <div class="dg-audio-row">
-      <span class="dg-audio-label">MASTER</span>
-      <input id="dg-audio-master" type="range" min="0" max="1" step="0.05" value="1">
-      <span id="dg-audio-master-val" class="dg-audio-val">100%</span>
-    </div>
+      <div class="dg-audio-row">
+        <span class="dg-audio-label">MASTER</span>
+        <input id="dg-audio-master" type="range" min="0" max="1" step="0.05" value="1">
+        <span id="dg-audio-master-val" class="dg-audio-val">100%</span>
+      </div>
 
-    <div class="dg-audio-row">
-      <span class="dg-audio-label">PLAYLIST</span>
-      <input id="dg-audio-playlist" type="range" min="0" max="1" step="0.05">
-      <span id="dg-audio-playlist-val" class="dg-audio-val"></span>
-    </div>
+      <div class="dg-audio-row">
+        <span class="dg-audio-label">PLAYLIST</span>
+        <input id="dg-audio-playlist" type="range" min="0" max="1" step="0.05">
+        <span id="dg-audio-playlist-val" class="dg-audio-val"></span>
+      </div>
 
-    <div class="dg-audio-row">
-      <span class="dg-audio-label">AMBIENT</span>
-      <input id="dg-audio-ambient" type="range" min="0" max="1" step="0.05">
-      <span id="dg-audio-ambient-val" class="dg-audio-val"></span>
-    </div>
+      <div class="dg-audio-row">
+        <span class="dg-audio-label">AMBIENT</span>
+        <input id="dg-audio-ambient" type="range" min="0" max="1" step="0.05">
+        <span id="dg-audio-ambient-val" class="dg-audio-val"></span>
+      </div>
 
-    <div class="dg-audio-row">
-      <span class="dg-audio-label">INTERFACE</span>
-      <input id="dg-audio-interface" type="range" min="0" max="1" step="0.05">
-      <span id="dg-audio-interface-val" class="dg-audio-val"></span>
-    </div>
-  `;
+      <div class="dg-audio-row">
+        <span class="dg-audio-label">INTERFACE</span>
+        <input id="dg-audio-interface" type="range" min="0" max="1" step="0.05">
+        <span id="dg-audio-interface-val" class="dg-audio-val"></span>
+      </div>
+    `;
 
-  systemView.appendChild(wrap);
+    systemView.appendChild(wrap);
 
-  // Helper to format 0–1 as "XX%"
-  const pct = (v) => `${Math.round((Number(v) || 0) * 100)}%`;
+    // Helper to format 0–1 as "XX%"
+    const pct = (v) => `${Math.round((Number(v) || 0) * 100)}%`;
 
-  // Baseline volumes for MASTER scaling (snapshot when master is first moved)
-  let masterBaseline = null;
+    // Baseline volumes for MASTER scaling (snapshot when master is first moved)
+    let masterBaseline = null;
 
-  // Sync sliders from current settings
-  const syncFromSettings = () => {
-    const playlist = game.settings.get("core", "globalPlaylistVolume") ?? 0.5;
-    const ambient  = game.settings.get("core", "globalAmbientVolume")  ?? 0.5;
-    const iface    = game.settings.get("core", "globalInterfaceVolume") ?? 0.5;
+    // Sync sliders from current settings
+    const syncFromSettings = () => {
+      const playlist = game.settings.get("core", "globalPlaylistVolume") ?? 0.5;
+      const ambient  = game.settings.get("core", "globalAmbientVolume")  ?? 0.5;
+      const iface    = game.settings.get("core", "globalInterfaceVolume") ?? 0.5;
 
-    const sMaster   = document.getElementById("dg-audio-master");
-    const sPlaylist = document.getElementById("dg-audio-playlist");
-    const sAmbient  = document.getElementById("dg-audio-ambient");
-    const sIface    = document.getElementById("dg-audio-interface");
+      const sMaster   = document.getElementById("dg-audio-master");
+      const sPlaylist = document.getElementById("dg-audio-playlist");
+      const sAmbient  = document.getElementById("dg-audio-ambient");
+      const sIface    = document.getElementById("dg-audio-interface");
 
-    const vMaster   = document.getElementById("dg-audio-master-val");
-    const vPlaylist = document.getElementById("dg-audio-playlist-val");
-    const vAmbient  = document.getElementById("dg-audio-ambient-val");
-    const vIface    = document.getElementById("dg-audio-interface-val");
+      const vMaster   = document.getElementById("dg-audio-master-val");
+      const vPlaylist = document.getElementById("dg-audio-playlist-val");
+      const vAmbient  = document.getElementById("dg-audio-ambient-val");
+      const vIface    = document.getElementById("dg-audio-interface-val");
 
-    if (sPlaylist) sPlaylist.value = playlist;
-    if (sAmbient)  sAmbient.value  = ambient;
-    if (sIface)    sIface.value    = iface;
+      if (sPlaylist) sPlaylist.value = playlist;
+      if (sAmbient)  sAmbient.value  = ambient;
+      if (sIface)    sIface.value    = iface;
 
-    if (vPlaylist) vPlaylist.textContent = pct(playlist);
-    if (vAmbient)  vAmbient.textContent  = pct(ambient);
-    if (vIface)    vIface.textContent    = pct(iface);
+      if (vPlaylist) vPlaylist.textContent = pct(playlist);
+      if (vAmbient)  vAmbient.textContent  = pct(ambient);
+      if (vIface)    vIface.textContent    = pct(iface);
 
-    // Master starts at 100% (no scaling) and resets baseline
-    if (sMaster) sMaster.value = 1;
-    if (vMaster) vMaster.textContent = "100%";
-    masterBaseline = null;
-  };
-
-  syncFromSettings();
-
-  // Wire sliders → Foundry settings (per-channel)
-  const bind = (sliderId, labelId, settingKey) => {
-    const slider = document.getElementById(sliderId);
-    const label  = document.getElementById(labelId);
-    if (!slider) return;
-
-    slider.addEventListener("input", async (ev) => {
-      const v = Number(ev.target.value || 0);
-      if (label) label.textContent = pct(v);
-
-      // Manual tweak breaks the old baseline; next master drag will re-snapshot
+      // Master starts at 100% (no scaling) and resets baseline
+      if (sMaster) sMaster.value = 1;
+      if (vMaster) vMaster.textContent = "100%";
       masterBaseline = null;
+    };
 
-      try {
-        await game.settings.set("core", settingKey, v);
-      } catch (err) {
-        console.error("DG UI | Error updating audio setting", settingKey, err);
-      }
-    });
-  };
+    syncFromSettings();
 
-  bind("dg-audio-playlist", "dg-audio-playlist-val", "globalPlaylistVolume");
-  bind("dg-audio-ambient",  "dg-audio-ambient-val",  "globalAmbientVolume");
-  bind("dg-audio-interface","dg-audio-interface-val","globalInterfaceVolume");
+    // Wire sliders → Foundry settings (per-channel)
+    const bind = (sliderId, labelId, settingKey) => {
+      const slider = document.getElementById(sliderId);
+      const label  = document.getElementById(labelId);
+      if (!slider) return;
 
-  // MASTER slider: scales all three channels, preserving their ratios
-  const masterSlider = document.getElementById("dg-audio-master");
-  const masterLabel  = document.getElementById("dg-audio-master-val");
+      slider.addEventListener("input", async (ev) => {
+        const v = Number(ev.target.value || 0);
+        if (label) label.textContent = pct(v);
 
-  if (masterSlider) {
-    masterSlider.addEventListener("input", async (ev) => {
-      const raw = Number(ev.target.value || 0);
-      const factor = Math.max(0, Math.min(1, raw));
-      if (masterLabel) masterLabel.textContent = pct(factor);
-
-      // Snapshot baseline once at the start of this drag
-      if (!masterBaseline) {
-        masterBaseline = {
-          playlist: Number(game.settings.get("core", "globalPlaylistVolume") ?? 0.5),
-          ambient:  Number(game.settings.get("core", "globalAmbientVolume")  ?? 0.5),
-          iface:    Number(game.settings.get("core", "globalInterfaceVolume") ?? 0.5)
-        };
-      }
-
-      const channels = [
-        {
-          key: "globalPlaylistVolume",
-          base: masterBaseline.playlist,
-          sliderId: "dg-audio-playlist",
-          labelId: "dg-audio-playlist-val"
-        },
-        {
-          key: "globalAmbientVolume",
-          base: masterBaseline.ambient,
-          sliderId: "dg-audio-ambient",
-          labelId: "dg-audio-ambient-val"
-        },
-        {
-          key: "globalInterfaceVolume",
-          base: masterBaseline.iface,
-          sliderId: "dg-audio-interface",
-          labelId: "dg-audio-interface-val"
-        }
-      ];
-
-      for (const ch of channels) {
-        const newVal = Math.max(0, Math.min(1, ch.base * factor));
-        const s = document.getElementById(ch.sliderId);
-        const l = document.getElementById(ch.labelId);
-
-        if (s) s.value = newVal;
-        if (l) l.textContent = pct(newVal);
+        // Manual tweak breaks the old baseline; next master drag will re-snapshot
+        masterBaseline = null;
 
         try {
-          await game.settings.set("core", ch.key, newVal);
+          await game.settings.set("core", settingKey, v);
         } catch (err) {
-          console.error("DG UI | Error updating audio setting", ch.key, err);
+          console.error("DG UI | Error updating audio setting", settingKey, err);
         }
-      }
-    });
+      });
+    };
 
-    // Optional: double-click MASTER to resync from settings (reset back to 100%)
-    masterSlider.addEventListener("dblclick", () => {
-      syncFromSettings();
-    });
-  }
+    bind("dg-audio-playlist", "dg-audio-playlist-val", "globalPlaylistVolume");
+    bind("dg-audio-ambient",  "dg-audio-ambient-val",  "globalAmbientVolume");
+    bind("dg-audio-interface","dg-audio-interface-val","globalInterfaceVolume");
 
-  // Initial ticker draw + lightweight polling to keep it updated
-  this.updateAudioTicker?.();
-  if (!this._audioTickerInterval) {
-    this._audioTickerInterval = setInterval(() => {
-      if (this.isInterfaceActive()) this.updateAudioTicker();
-    }, 1000);
-  }
-}
+    // MASTER slider: scales all three channels, preserving their ratios
+    const masterSlider = document.getElementById("dg-audio-master");
+    const masterLabel  = document.getElementById("dg-audio-master-val");
 
-static updateAudioTicker() {
-  const el = document.getElementById("dg-audio-ticker");
-  if (!el) return;
+    if (masterSlider) {
+      masterSlider.addEventListener("input", async (ev) => {
+        const raw = Number(ev.target.value || 0);
+        const factor = Math.max(0, Math.min(1, raw));
+        if (masterLabel) masterLabel.textContent = pct(factor);
 
-  const coll = game.playlists?.contents ?? game.playlists ?? [];
-  const playing = [];
+        // Snapshot baseline once at the start of this drag
+        if (!masterBaseline) {
+          masterBaseline = {
+            playlist: Number(game.settings.get("core", "globalPlaylistVolume") ?? 0.5),
+            ambient:  Number(game.settings.get("core", "globalAmbientVolume")  ?? 0.5),
+            iface:    Number(game.settings.get("core", "globalInterfaceVolume") ?? 0.5)
+          };
+        }
 
-  for (const pl of coll) {
-    const sounds = pl.sounds ?? [];
-    for (const s of sounds) {
-      // Foundry playlist sounds expose a "playing" flag
-      if (s.playing) playing.push({ playlist: pl, sound: s });
-    }
-  }
+        const channels = [
+          {
+            key: "globalPlaylistVolume",
+            base: masterBaseline.playlist,
+            sliderId: "dg-audio-playlist",
+            labelId: "dg-audio-playlist-val"
+          },
+          {
+            key: "globalAmbientVolume",
+            base: masterBaseline.ambient,
+            sliderId: "dg-audio-ambient",
+            labelId: "dg-audio-ambient-val"
+          },
+          {
+            key: "globalInterfaceVolume",
+            base: masterBaseline.iface,
+            sliderId: "dg-audio-interface",
+            labelId: "dg-audio-interface-val"
+          }
+        ];
 
-  if (!playing.length) {
-    el.textContent = "NOW PLAYING: —";
-    return;
-  }
+        for (const ch of channels) {
+          const newVal = Math.max(0, Math.min(1, ch.base * factor));
+          const s = document.getElementById(ch.sliderId);
+          const l = document.getElementById(ch.labelId);
 
-  const { playlist, sound } = playing[0];
-  const name = sound.name || "Untitled";
-  const plName = playlist.name || "Playlist";
+          if (s) s.value = newVal;
+          if (l) l.textContent = pct(newVal);
 
-  // --- Time formatting bit ---
-  let timePart = "";
-  try {
-    // Underlying audio object (Howler/HTML5) attached by Foundry
-    const audio = sound.sound;
-
-    // Use Foundry’s formatter if it exists, otherwise fallback
-    const format =
-      ui.playlists?.constructor?.formatTimestamp ??
-      ((seconds) => {
-        const s = Math.max(0, Math.floor(Number(seconds) || 0));
-        const m = Math.floor(s / 60);
-        const r = s % 60;
-        return `${m}:${r.toString().padStart(2, "0")}`;
+          try {
+            await game.settings.set("core", ch.key, newVal);
+          } catch (err) {
+            console.error("DG UI | Error updating audio setting", ch.key, err);
+          }
+        }
       });
 
-    if (audio) {
-      const currentSeconds = Number(audio.currentTime || 0);
-      const durationSeconds = Number(audio.duration || 0);
-
-      const currentText = format(currentSeconds);
-      const durationText = durationSeconds ? format(durationSeconds) : "--:--";
-
-      // Append " 0:18/4:28" style
-      timePart = ` ${currentText}/${durationText}`;
+      // Optional: double-click MASTER to resync from settings (reset back to 100%)
+      masterSlider.addEventListener("dblclick", () => {
+        syncFromSettings();
+      });
     }
-  } catch (e) {
-    // If anything blows up, just skip time and show name only
-    console.error("DG UI | audio ticker time error:", e);
+
+    // Initial ticker draw + lightweight polling to keep it updated
+    this.updateAudioTicker?.();
+    if (!this._audioTickerInterval) {
+      this._audioTickerInterval = setInterval(() => {
+        if (this.isInterfaceActive()) this.updateAudioTicker();
+      }, 1000);
+    }
   }
 
-  if (playing.length === 1) {
-    el.textContent = `NOW PLAYING: ${name} (${plName})${timePart}`;
-  } else {
-    el.textContent = `NOW PLAYING: ${name} (+${playing.length - 1} more)${timePart}`;
+  static updateAudioTicker() {
+    const el = document.getElementById("dg-audio-ticker");
+    if (!el) return;
+
+    const coll = game.playlists?.contents ?? game.playlists ?? [];
+    const playing = [];
+
+    for (const pl of coll) {
+      const sounds = pl.sounds ?? [];
+      for (const s of sounds) {
+        // Foundry playlist sounds expose a "playing" flag
+        if (s.playing) playing.push({ playlist: pl, sound: s });
+      }
+    }
+
+    if (!playing.length) {
+      el.textContent = "NOW PLAYING: —";
+      return;
+    }
+
+    const { playlist, sound } = playing[0];
+    const name = sound.name || "Untitled";
+    const plName = playlist.name || "Playlist";
+
+    // --- Time formatting bit ---
+    let timePart = "";
+    try {
+      // Underlying audio object (Howler/HTML5) attached by Foundry
+      const audio = sound.sound;
+
+      // Use Foundry’s formatter if it exists, otherwise fallback
+      const format =
+        ui.playlists?.constructor?.formatTimestamp ??
+        ((seconds) => {
+          const s = Math.max(0, Math.floor(Number(seconds) || 0));
+          const m = Math.floor(s / 60);
+          const r = s % 60;
+          return `${m}:${r.toString().padStart(2, "0")}`;
+        });
+
+      if (audio) {
+        const currentSeconds = Number(audio.currentTime || 0);
+        const durationSeconds = Number(audio.duration || 0);
+
+        const currentText = format(currentSeconds);
+        const durationText = durationSeconds ? format(durationSeconds) : "--:--";
+
+        // Append " 0:18/4:28" style
+        timePart = ` ${currentText}/${durationText}`;
+      }
+    } catch (e) {
+      // If anything blows up, just skip time and show name only
+      console.error("DG UI | audio ticker time error:", e);
+    }
+
+    if (playing.length === 1) {
+      el.textContent = `NOW PLAYING: ${name} (${plName})${timePart}`;
+    } else {
+      el.textContent = `NOW PLAYING: ${name} (+${playing.length - 1} more)${timePart}`;
+    }
   }
-}
 
   /* ------------------------------- Templates ------------------------------ */
 
@@ -2502,8 +2736,9 @@ static updateAudioTicker() {
         `modules/${this.ID}/templates/rolls-view.html`,
         `modules/${this.ID}/templates/inventory-view.html`,
         `modules/${this.ID}/templates/psyche-view.html`,
-		`modules/${this.ID}/templates/sound-view.html`,
-		`modules/${this.ID}/templates/combat-view.html`,
+        `modules/${this.ID}/templates/sound-view.html`,
+        `modules/${this.ID}/templates/combat-view.html`,
+        `modules/${this.ID}/templates/time-view.html`
       ];
 
       for (const path of templatePaths) {
@@ -2634,52 +2869,51 @@ static updateAudioTicker() {
    * Make sure all Foundry window-app popups (journals, items, actors, dialogs)
    * always display above the CRT bar by forcing a higher z-index.
    */
-static enforcePopupZIndex() {
-  const styleId = "dg-crt-popup-z-fix";
-  if (document.getElementById(styleId)) return;
+  static enforcePopupZIndex() {
+    const styleId = "dg-crt-popup-z-fix";
+    if (document.getElementById(styleId)) return;
 
-  const style = document.createElement("style");
-  style.id = styleId;
+    const style = document.createElement("style");
+    style.id = styleId;
 
-  style.textContent = `
-    /* ------------------------------------------------------------------
-     * Foundry windows & UI always ABOVE CRT
-     * ------------------------------------------------------------------ */
+    style.textContent = `
+      /* ------------------------------------------------------------------
+       * Foundry windows & UI always ABOVE CRT
+       * ------------------------------------------------------------------ */
 
-    /* All pop-up windows: actor sheets, journal sheets, dialogs, configs */
-    .window-app,
-    .app.window-app,
-    .dialog,
-    .filepicker,
-    .sidebar-popout {
-      z-index: 19000 !important;
-    }
+      /* All pop-up windows: actor sheets, journal sheets, dialogs, configs */
+      .window-app,
+      .app.window-app,
+      .dialog,
+      .filepicker,
+      .sidebar-popout {
+        z-index: 19000 !important;
+      }
 
-    /* Core UI chrome (if visible) */
-    #ui-top,
-    #ui-left,
-    #ui-right,
-    #navigation,
-    #sidebar,
-    #controls,
-    #logo,
-    #players,
-    #hotbar {
-      z-index: 19000 !important;
-    }
+      /* Core UI chrome (if visible) */
+      #ui-top,
+      #ui-left,
+      #ui-right,
+      #navigation,
+      #sidebar,
+      #controls,
+      #logo,
+      #players,
+      #hotbar {
+        z-index: 19000 !important;
+      }
 
-    /* Canvas overlays that should still be above CRT */
-    #token-hud,
-    #hud,
-    #context-menu,
-    #tooltip {
-      z-index: 19000 !important;
-    }
-  `;
+      /* Canvas overlays that should still be above CRT */
+      #token-hud,
+      #hud,
+      #context-menu,
+      #tooltip {
+        z-index: 19000 !important;
+      }
+    `;
 
-  document.head.appendChild(style);
-}
-
+    document.head.appendChild(style);
+  }
 }
 
 /* ----------------------------------------------------------------------------
