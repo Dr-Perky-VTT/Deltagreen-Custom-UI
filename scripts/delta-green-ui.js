@@ -14,9 +14,10 @@ import { InventoryManager } from "./inventory-manager.js";
 import { PsycheManager } from "./psyche-manager.js";
 import { ColorThemeManager } from "./color-theme-manager.js";
 import { BankingManager } from "./banking-manager.js";
-import { ExpensesManager } from "./equipment-catalog.js";
 import { CombatManager } from "./combat-manager.js";
 import { HealthManager } from "./health-manager.js";
+import { WeaponSoundManager } from "./sound-manager.js";
+
 // Use the namespaced Handlebars helpers (avoids global deprecation warnings)
 const { renderTemplate, loadTemplates } = foundry.applications.handlebars;
 
@@ -129,7 +130,6 @@ Hooks.on("preCreateActor", (actor, creationData, options, userId) => {
 export class DeltaGreenUI {
   static ID = "deltagreen-custom-ui";
   static refreshIntervalId = null;
-  static nowPlayingIntervalId = null;
   static isLoadingEntries = false;
   static lastSuccessfulLoad = 0;
   static consecutiveErrors = 0;
@@ -874,7 +874,7 @@ game.settings.register(this.ID, "scanlineIntensity", {
 
     // Per-player color overrides
     ColorThemeManager.registerSettings();
-
+  WeaponSoundManager.registerSettings();
     // CRT font choice per client (used by both settings UI and CRT dropdown)
     const fontChoices = {};
     for (const font of DG_FONT_CHOICES) {

@@ -36,6 +36,7 @@ export const GEAR_CATEGORIES = {
   SURVEILLANCE: "surveillance",
   EMERGENCY: "emergency",
   BREAKING: "breaking",
+  WEAPON_MODS: "weapon_mods",
   RESTRAINTS: "restraints",
   TRANSPORTATION: "transportation",
   LODGING: "lodging",
@@ -854,7 +855,55 @@ export const GEAR = [
     expense: "Major",
     notes: "RESTRICTED. Requires Computer Science or special training (INT). 2 km range (200 m wearable). Vehicular model 30 km as Extreme expense."
   },
-
+  // === Weapon Mods ===
+   {
+    name: "Holographic sight",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Standard",
+    notes: "Gives a +20% bonus to hit as long as your Agent has taken no damage since their last action."
+  },
+  {
+    name: "Night vision sight",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Standard",
+    notes: "Allows aiming in reduced light such as starlight out to 400 m; runs for 100 hours and doubles a firearm’s base range at night if your Agent spent the previous turn taking the Aim action."
+  },
+  {
+    name: "Sound suppressor",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Standard",
+    notes: "RESTRICTED. Requires an Alertness test to hear a shot beyond a wall or door. An especially quiet suppressed shot, such as a light pistol, imposes a –20% penalty to hear."
+  },
+  {
+    name: "Targeting laser",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Standard",
+    notes: "Gives a +20% bonus to hit as long as your Agent has taken no damage since their last action. Does not require raising the gun to the eyes. Useful to 200 m, runs for 100 hours. Also available as an Unusual expense with an infrared mode only visible with NVGs or night-vision sights."
+  },
+  {
+    name: "Telescopic sight",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Standard",
+    notes: "Doubles a firearm’s base range if your Agent spent the previous turn taking the Aim action."
+  },
+  {
+    name: "Advanced Combat Optical Gunsight (ACOG)",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Unusual",
+    notes: "Combines the effects of a holographic sight and a telescopic sight."
+  },
+  {
+    name: "Thermal Weapon Sight (TWS)",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Unusual",
+    notes: "Allows aiming in complete darkness out to 400 m; runs for 2 hours and doubles a firearm’s base range if your Agent spent the previous turn taking the Aim action."
+  },
+  {
+    name: "\"Ghost gun\" machine: heavy-duty desktop 3D printer with software",
+    category: GEAR_CATEGORIES.WEAPON_MODS,
+    expense: "Major",
+    notes: "Mills an aluminum lower receiver for a firearm. Other parts can be purchased as an Unusual expense. Assembly requires an INT×5 or Craft (Gunsmithing) test; on a failure, the gun is unreliable (see JUNK rules)."
+  },
   // === Restraints ===
   {
     name: "Flexible cuffs",
@@ -1139,7 +1188,218 @@ export const SERVICES = [
     expense: "Extreme",
     notes: "RESTRICTED. Requires Computer Science or special training (INT)."
   },
+    // === Off-the-Books Medical Care ===
+  {
+    name: "Off-the-books first aid, no questions asked",
+    category: SERVICE_CATEGORIES.CRIMINAL,
+    expense: "Standard",
+    notes: "Requires Criminology to find a medical professional of loose ethics."
+  },
+  {
+    name: "Off-the-books drugs or minor surgery, no questions asked",
+    category: SERVICE_CATEGORIES.CRIMINAL,
+    expense: "Unusual",
+    notes: "Requires Criminology to find a medical professional of loose ethics."
+  },
+  {
+    name: "Off-the-books major surgery, no questions asked",
+    category: SERVICE_CATEGORIES.CRIMINAL,
+    expense: "Major",
+    notes: "Requires Criminology to find a medical professional of loose ethics."
+  },
+  {
+    name: "Bribe an incinerator, crematorium, or furnace worker to look the other way while you burn a corpse",
+    category: SERVICE_CATEGORIES.CRIMINAL,
+    expense: "Major",
+    notes: "Requires Criminology to find a worker willing to cooperate."
+  },
+// === Law Enforcement – Official Requisition Only ===
+{
+  name: "[LAW ENFORCEMENT] Access to unclassified but restricted files such as criminal or financial records",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Incidental",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Must relate to an official investigation; if not, a failed Luck roll draws official review."
+},
+{
+  name: "[LAW ENFORCEMENT] Holding a prisoner for 24 hours with no questions asked",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Standard",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Must relate to an official investigation; if not, a failed Luck roll draws official review."
+},
+{
+  name: "[LAW ENFORCEMENT] Use for a day of an agency-owned sedan, patrol vehicle, or SUV",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Standard",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Vehicle pulled from an agency motor pool."
+},
+{
+  name: "[LAW ENFORCEMENT] Acquiring data from an unrelated case",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Standard",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Pulling files from another investigation."
+},
+{
+  name: "[LAW ENFORCEMENT] Drone surveillance of a specific suspect for a day or two",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Automatically elicits official review."
+},
+{
+  name: "[LAW ENFORCEMENT] Use for a day of an agency-owned quad runner, patrol boat, or small specialized craft",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Specialized vehicles only."
+},
+{
+  name: "[LAW ENFORCEMENT] Deployment of 2–5 local uniformed police",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Automatically elicits official review."
+},
+{
+  name: "[LAW ENFORCEMENT] Surveillance data from an ongoing case",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Access to live surveillance on an existing case."
+},
+{
+  name: "[LAW ENFORCEMENT] Order a wiretap",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Requires appropriate warrants and approvals."
+},
+{
+  name: "[LAW ENFORCEMENT] Armored SUV requisitioned for a week",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Short-term assignment of an armored vehicle."
+},
+{
+  name: "[LAW ENFORCEMENT] Call in a regional FBI SWAT team for a raid",
+  category: SERVICE_CATEGORIES.REQUISITION_LAW,
+  expense: "Extreme",
+  notes: "OFFICIAL REQUISITION – Law Enforcement. Automatically elicits official review."
+},
 
+// === Intelligence – Official Requisition Only ===
+{
+  name: "[INTELLIGENCE] Access to another agency's classified files (not related to national security)",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Intelligence. Includes digital communications data from systems like NarusInsight (FBI) or XKeyscore (NSA)."
+},
+{
+  name: "[INTELLIGENCE] Drone flyover or surveillance over a specific site",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Intelligence. Automatically elicits official review."
+},
+{
+  name: "[INTELLIGENCE] Holding a prisoner at a \"black site\" for 48 hours",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Intelligence. An Agent must already know of the black site."
+},
+{
+  name: "[INTELLIGENCE] Clearance to be present during an interrogation or debriefing",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Intelligence. Grants observer/participant status at a sensitive interrogation."
+},
+{
+  name: "[INTELLIGENCE] Sophisticated fake documents",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Intelligence. High-quality false identities or travel papers."
+},
+{
+  name: "[INTELLIGENCE] Access to classified files related to national security (no \"need to know\")",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Intelligence. Technically espionage; can result in firing and/or prosecution if detected."
+},
+{
+  name: "[INTELLIGENCE] Extended drone or satellite surveillance over a specific site",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Extreme",
+  notes: "OFFICIAL REQUISITION – Intelligence. Automatically elicits official review."
+},
+{
+  name: "[INTELLIGENCE] Call in support from a covert operative team in the area",
+  category: SERVICE_CATEGORIES.REQUISITION_INTEL,
+  expense: "Extreme",
+  notes: "OFFICIAL REQUISITION – Intelligence. Automatically elicits official review."
+},
+
+// === Military – Official Requisition Only ===
+{
+  name: "[MILITARY] Seat on an already scheduled support flight (Space-A)",
+  category: SERVICE_CATEGORIES.REQUISITION_MIL,
+  expense: "Incidental",
+  notes: "OFFICIAL REQUISITION – Military. Hitched ride on existing military airlift."
+},
+{
+  name: "[MILITARY] Call in a special operations team for security or evacuation",
+  category: SERVICE_CATEGORIES.REQUISITION_MIL,
+  expense: "Extreme",
+  notes: "OFFICIAL REQUISITION – Military. Automatically elicits official review."
+},
+{
+  name: "[MILITARY] Helicopter support (transport or surveillance)",
+  category: SERVICE_CATEGORIES.REQUISITION_MIL,
+  expense: "Extreme",
+  notes: "OFFICIAL REQUISITION – Military. Automatically elicits official review."
+},
+{
+  name: "[MILITARY] Missile strike",
+  category: SERVICE_CATEGORIES.REQUISITION_MIL,
+  expense: "Extreme",
+  notes: "OFFICIAL REQUISITION – Military. Automatically elicits official review; will not be performed on American soil."
+},
+
+// === Public Safety – Official Requisition Only ===
+{
+  name: "[PUBLIC SAFETY] Credentials for unescorted entry into a restricted site",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Standard",
+  notes: "OFFICIAL REQUISITION – Public Safety. Temporary credentials for secure facilities."
+},
+{
+  name: "[PUBLIC SAFETY] Access to sensitive files outside the Agent's specialty",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Standard",
+  notes: "OFFICIAL REQUISITION – Public Safety. Cross-agency or cross-department file access."
+},
+{
+  name: "[PUBLIC SAFETY] Request for local law enforcement to make an arrest (with justification)",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Standard",
+  notes: "OFFICIAL REQUISITION – Public Safety. Automatically elicits official review."
+},
+{
+  name: "[PUBLIC SAFETY] Warrant for access to an industrial site for alleged environmental crimes",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Unusual",
+  notes: "OFFICIAL REQUISITION – Public Safety. Automatically elicits official review."
+},
+{
+  name: "[PUBLIC SAFETY] Temporarily shut down a site for investigation of environmental crimes",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Public Safety. Automatically elicits official review."
+},
+{
+  name: "[PUBLIC SAFETY] Quarantine a single location",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Public Safety. Automatically elicits official review; see QUARANTINES rules."
+},
+{
+  name: "[PUBLIC SAFETY] Quarantine an area",
+  category: SERVICE_CATEGORIES.REQUISITION_PUBLIC_SAFETY,
+  expense: "Major",
+  notes: "OFFICIAL REQUISITION – Public Safety. Automatically elicits official review; see QUARANTINES rules."
+},
   // === Transportation (tickets / charters) ===
   {
     name: "Same-day bus ticket",

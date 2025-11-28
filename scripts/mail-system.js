@@ -1,5 +1,6 @@
 // mail-system.js
 import { DeltaGreenUI } from "./delta-green-ui.js";
+import { WeaponSoundManager } from "./sound-manager.js";
 
 // v12+ compatibility: prefer CHAT_MESSAGE_STYLES; fallback to CHAT_MESSAGE_TYPES on older Foundry
 const CHAT_STYLES = CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES;
@@ -14,6 +15,7 @@ export class MailSystem {
   static _pendingActorRefreshActor = null;
   static _loadMessagesTimeout = null;
   static _lastActorId = null;
+
   /* ------------------------------------------------------------------------ */
   /* INIT + LAYOUT                                                            */
   /* ------------------------------------------------------------------------ */
@@ -55,17 +57,17 @@ export class MailSystem {
       }
     });
 
-Hooks.on("controlToken", (token, controlled) => {
-  try {
-    // Only react when a token becomes controlled, not when it's released
-    if (!controlled) return;
+    Hooks.on("controlToken", (token, controlled) => {
+      try {
+        // Only react when a token becomes controlled, not when it's released
+        if (!controlled) return;
 
-    // Just schedule a refresh instead of doing everything immediately
-    this._scheduleActorRefresh(token?.actor || null);
-  } catch (err) {
-    console.error("Delta Green UI | Error in controlToken hook:", err);
-  }
-});
+        // Just schedule a refresh instead of doing everything immediately
+        this._scheduleActorRefresh(token?.actor || null);
+      } catch (err) {
+        console.error("Delta Green UI | Error in controlToken hook:", err);
+      }
+    });
 
     Hooks.on("updateActor", (actor) => {
       try {
@@ -76,12 +78,10 @@ Hooks.on("controlToken", (token, controlled) => {
       }
     });
 
-    Hooks.on("renderChatMessage", (message, html, data) => {
-      try {
-        this.renderChatMessage(message, html, data);
-      } catch (err) {
-        console.error("Delta Green UI | Error in renderChatMessage hook:", err);
-      }
+    // v13+ chat hook (HTMLElement instead of jQuery)
+    Hooks.on("renderChatMessageHTML", (message, html, data) => {
+      const $html = html instanceof jQuery ? html : $(html);
+      this.renderChatMessage(message, $html, data);
     });
 
     this.initEvents();
@@ -212,12 +212,40 @@ Hooks.on("controlToken", (token, controlled) => {
     });
 
     // Weapon buttons
-    $(document).off("click", ".dg-weapon-btn");
-    $(document).on("click", ".dg-weapon-btn", async (ev) => {
-      const id = $(ev.currentTarget).data("weaponId");
-      if (!id) return;
-      await this.rollWeaponAttack(id);
-    });
+    $(document)
+      .off("click.dgWeaponRoll", ".dg-weapon-btn")
+      .on("click.dgWeaponRoll", ".dg-weapon-btn", async (ev) => {
+        ev.preventDefault();
+        const btn = ev.currentTarget;
+        const id = btn.dataset.weaponId;
+        if (!id) return;
+
+        // Read the current mode from the button
+        const mode = btn.dataset.fireMode === "auto" ? "auto" : "semi";
+
+        await this.rollWeaponAttack(id, { mode });
+      });
+
+    // Right-click on a weapon button toggles SEMI/AUTO for firearms only
+    $(document)
+      .off("contextmenu.dgWeaponMode", ".dg-weapon-btn")
+      .on("contextmenu.dgWeaponMode", ".dg-weapon-btn", (ev) => {
+        ev.preventDefault();
+        const btn = ev.currentTarget;
+
+        // If this button doesn't have a fire mode, it's melee/grenade/artillery → ignore
+        if (!btn.dataset.fireMode) return;
+
+        const current = btn.dataset.fireMode === "auto" ? "auto" : "semi";
+        const next = current === "auto" ? "semi" : "auto";
+
+        btn.dataset.fireMode = next;
+
+        const modeTag = btn.querySelector(".dg-weapon-mode-tag");
+        if (modeTag) {
+          modeTag.textContent = next === "auto" ? "[AUTO]" : "[SEMI]";
+        }
+      });
 
     // SAN CHECK button in mail header (backup; ensureSanButton also wires it)
     $(document).off("click", "#dg-san-check-btn");
@@ -320,7 +348,7 @@ Hooks.on("controlToken", (token, controlled) => {
       swim: "swim",
       unnatural: "unnatural",
       ritual: "rituals",
-      rituals: "rituals"
+      rituals: "rituals",
     };
 
     if (!uiKey) return uiKey;
@@ -363,9 +391,6 @@ Hooks.on("controlToken", (token, controlled) => {
 
   /**
    * Compute the sender label for a ChatMessage.
-   * - Prefer message.speaker.alias (what shows in the regular chat log), shortened by _shortenName
-   * - Then try the speaker's actor (by ID / token), shortened by _shortenName
-   * - Finally fall back to the Foundry user (author), via formatSenderName
    */
   static getMessageSender(message) {
     if (!message) return "UNKNOWN";
@@ -394,7 +419,6 @@ Hooks.on("controlToken", (token, controlled) => {
       const fromName = this._shortenName(actor.name || "");
       if (fromName) return fromName;
 
-      // fall through to flag-based construction below if needed
       try {
         const MODULE_ID = DeltaGreenUI.ID;
         const first =
@@ -484,7 +508,6 @@ Hooks.on("controlToken", (token, controlled) => {
   }
 
   // Color SAN CHECK based on SAN vs Breaking Point
-  // UPDATED: SAN status respects GM "allowSanNumbers" setting and won't crash if missing
   static _refreshSanButtonStatus(actor = null) {
     try {
       const current = actor || this._getCurrentActor();
@@ -505,7 +528,6 @@ Hooks.on("controlToken", (token, controlled) => {
       );
 
       // GM-only world setting: can SAN ever show numbers?
-      // Guarded so it won't throw if the setting doesn't exist.
       let allowSanNumbers = false;
       const settingKey = "deltagreen-custom-ui.allowSanNumbers";
       try {
@@ -559,8 +581,6 @@ Hooks.on("controlToken", (token, controlled) => {
 
       $btn.addClass(cls);
 
-      // If GM allows numbers, prefix the label with current SAN %.
-      // Otherwise we keep it fully vibe-based.
       if (allowSanNumbers && Number.isFinite(sanCurrent)) {
         $btn.text(`SAN ${sanCurrent}% — ${label}`);
       } else {
@@ -595,7 +615,6 @@ Hooks.on("controlToken", (token, controlled) => {
       // Capture and freeze the "base" left-side title once
       if (!header.dataset.baseTitle) {
         const existing = header.textContent || "";
-        // Strip any old "LOGGED IN: ..." fragment if it snuck in
         const cleaned = existing.replace(/LOGGED IN:.*/i, "").trim();
         header.dataset.baseTitle = cleaned || "SECURE MESSAGING SYSTEM";
       }
@@ -612,7 +631,7 @@ Hooks.on("controlToken", (token, controlled) => {
     }
   }
 
-  // UPDATED: stat buttons obey MailSystem.showSkillNumbers and show % (x5)
+  // Stat buttons obey MailSystem.showSkillNumbers and show % (x5)
   static refreshStatButtons() {
     const actor = this._getCurrentActor();
     const showNums = MailSystem.showSkillNumbers;
@@ -626,7 +645,6 @@ Hooks.on("controlToken", (token, controlled) => {
         return;
       }
 
-      // Try a few common roots so this is resilient to your system schema
       const statsRoot =
         actor.system?.stats ||
         actor.system?.statistics ||
@@ -634,7 +652,6 @@ Hooks.on("controlToken", (token, controlled) => {
         actor.system?.attributes ||
         {};
 
-      // Try key, lower, upper so "str" / "STR" both work
       const statObj =
         statsRoot[key] ||
         statsRoot[key.toLowerCase?.()] ||
@@ -643,13 +660,11 @@ Hooks.on("controlToken", (token, controlled) => {
       const rawVal = statObj?.value ?? statObj?.score ?? statObj;
       const val = Number(rawVal);
 
-      // If we can't get a numeric value, just hide the button
       if (!statObj || Number.isNaN(val)) {
         $btn.hide();
         return;
       }
 
-      // Cache base label once so we don't keep appending numbers
       if (!$btn.data("baseLabel")) {
         const existing = ($btn.text() || "").toString().trim();
         const baseLabel = existing || key.toString().toUpperCase();
@@ -658,18 +673,14 @@ Hooks.on("controlToken", (token, controlled) => {
 
       const baseLabel = $btn.data("baseLabel");
 
-      // Decide what to show
       let label = baseLabel;
 
       if (showNums) {
-        // If it's a small value (like 13), assume it's raw and convert to % (x5)
-        // If it's already a big number (like 65), assume it's already a %.
         let percent = val;
         if (val <= 20) {
           percent = val * 5;
         }
 
-        // Clamp to something sane just in case
         if (percent < 0) percent = 0;
         if (percent > 200) percent = 200;
 
@@ -697,8 +708,8 @@ Hooks.on("controlToken", (token, controlled) => {
 
       const curRaw = Number(foundry.utils.getProperty(actor, hpPath) ?? 0);
       const maxRaw = Number(
-        foundry.utils.getProperty(actor, hpMaxPath) ?? 
-          foundry.utils.getProperty(actor, hpPath) ?? 
+        foundry.utils.getProperty(actor, hpMaxPath) ??
+          foundry.utils.getProperty(actor, hpPath) ??
           0
       );
 
@@ -710,7 +721,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
       let next = cur + delta;
       if (max > 0) next = Math.min(next, max);
-      next = Math.max(0, next); // clamp at 0
+      next = Math.max(0, next);
 
       await actor.update({ [hpPath]: next });
       this.refreshHpWpPanel(actor);
@@ -734,8 +745,8 @@ Hooks.on("controlToken", (token, controlled) => {
 
       const curRaw = Number(foundry.utils.getProperty(actor, wpPath) ?? 0);
       const maxRaw = Number(
-        foundry.utils.getProperty(actor, wpMaxPath) ?? 
-          foundry.utils.getProperty(actor, wpPath) ?? 
+        foundry.utils.getProperty(actor, wpMaxPath) ??
+          foundry.utils.getProperty(actor, wpPath) ??
           0
       );
 
@@ -747,7 +758,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
       let next = cur + delta;
       if (max > 0) next = Math.min(next, max);
-      next = Math.max(0, next); // clamp at 0
+      next = Math.max(0, next);
 
       await actor.update({ [wpPath]: next });
       this.refreshHpWpPanel(actor);
@@ -762,7 +773,6 @@ Hooks.on("controlToken", (token, controlled) => {
       const current = this._getCurrentActor();
       if (!current) return;
 
-      // If called from updateActor/controlToken, ignore other actors
       if (actor && actor.id !== current.id) return;
 
       const hpCurrent = Number(
@@ -794,10 +804,8 @@ Hooks.on("controlToken", (token, controlled) => {
         const curNum = Number.isFinite(cur) ? cur : NaN;
         const maxNum = Number.isFinite(max) ? max : NaN;
 
-        // Reset state classes
         $el.removeClass("dg-hpwp-good dg-hpwp-warn dg-hpwp-bad");
 
-        // If we don't have usable numbers, just show placeholder
         if (!Number.isFinite(curNum) || !Number.isFinite(maxNum) || maxNum <= 0) {
           $el.text(`${label}: -- / --`);
           return;
@@ -805,7 +813,6 @@ Hooks.on("controlToken", (token, controlled) => {
 
         const ratio = Math.max(0, Math.min(1, curNum / maxNum));
 
-        // Show the REAL numbers to the player
         $el.text(`${label}: ${curNum}/${maxNum}`);
 
         if (ratio > 0.8) {
@@ -820,7 +827,6 @@ Hooks.on("controlToken", (token, controlled) => {
       setBox($hp, "HP", hpCurrent, hpMax);
       setBox($wp, "WP", wpCurrent, wpMax);
 
-      // SAN stays abstract: just update the SAN CHECK button label/color
       this._refreshSanButtonStatus(current);
     } catch (err) {
       console.error("Delta Green UI | refreshHpWpPanel error:", err);
@@ -848,8 +854,7 @@ Hooks.on("controlToken", (token, controlled) => {
     });
   }
 
-  // UPDATED: show skill % on buttons, and hide untrained (<10%) base skills
-  // UPDATED: obey MailSystem.showSkillNumbers
+  // Skill hotbar
   static refreshSkillHotbar() {
     const actor = this._getCurrentActor();
     const skills = actor?.system?.skills || {};
@@ -875,9 +880,8 @@ Hooks.on("controlToken", (token, controlled) => {
           return;
         }
 
-        const isMarked = !!skillObj.failure; // ☣ if this is true
+        const isMarked = !!skillObj.failure;
 
-        // Cache the base label once so we don't keep appending stuff
         if (!$btn.data("baseLabel")) {
           const existing = ($btn.text() || "").toString().trim();
           const baseLabel =
@@ -891,7 +895,6 @@ Hooks.on("controlToken", (token, controlled) => {
 
         const baseLabel = $btn.data("baseLabel");
 
-        // Build label according to toggle
         let label = baseLabel;
         if (showNums) {
           label = `${baseLabel} ${prof}%`;
@@ -906,8 +909,7 @@ Hooks.on("controlToken", (token, controlled) => {
       });
   }
 
-  // UPDATED: typed skill labels obey MailSystem.showSkillNumbers
-  // Always show marked (☣) typed skills.
+  // Typed skills
   static refreshTypedSkillButtons() {
     const actor = this._getCurrentActor();
     const $skillBar = $(".dg-mail-base-skillbar");
@@ -923,7 +925,6 @@ Hooks.on("controlToken", (token, controlled) => {
       .filter(([_, s]) => {
         const val = Number(s?.proficiency ?? 0);
         const isMarked = !!s?.failure;
-        // Hide truly irrelevant stuff: 0% and not marked
         return !Number.isNaN(val) && (val > 0 || isMarked);
       })
       .sort((a, b) => {
@@ -940,7 +941,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
     for (const [key, skill] of entries) {
       const prof = Number(skill.proficiency ?? 0);
-      const isMarked = !!skill.failure; // ☣ marker
+      const isMarked = !!skill.failure;
 
       let baseLabel = `${(skill.group || "TYPED").toUpperCase()} (${(
         skill.label || key
@@ -960,7 +961,6 @@ Hooks.on("controlToken", (token, controlled) => {
         </button>
       `);
 
-      // Helpful for CSS / tooltips
       $btn.attr("data-skill-key", key);
       $btn.attr("data-skill-group", (skill.group || "").toUpperCase());
       $btn.attr("data-skill-label", (skill.label || key).toUpperCase());
@@ -982,12 +982,8 @@ Hooks.on("controlToken", (token, controlled) => {
 
     const weapons = items.filter((item) => {
       const type = (item.type || "").toLowerCase();
-
-      // Same weapon detection as InventoryManager._partitionItems
       const isWeaponType = type === "weapon" || type.includes("weapon");
       if (!isWeaponType) return false;
-
-      // Only show equipped weapons
       return this._isWeaponEquipped(item);
     });
 
@@ -999,13 +995,42 @@ Hooks.on("controlToken", (token, controlled) => {
     }
 
     for (const w of weapons) {
-      const name = w.name || "WEAPON";
-      const btn = $(`
-        <button class="dg-button dg-weapon-btn" data-weapon-id="${w.id}">
-          ${name.toUpperCase()}
-        </button>
-      `);
-      $wrap.append(btn);
+      const upperName = (w.name || "WEAPON").toUpperCase();
+
+      const isFirearm =
+        typeof WeaponSoundManager.isFirearmWeapon === "function"
+          ? WeaponSoundManager.isFirearmWeapon(w)
+          : false;
+
+      let btnHtml;
+
+      if (isFirearm) {
+        btnHtml = `
+          <button class="dg-button dg-weapon-btn"
+                  data-weapon-id="${w.id}"
+                  data-weapon-name="${upperName}"
+                  data-fire-mode="semi">
+            <span class="dg-weapon-label">
+              ${upperName}
+            </span>
+            <span class="dg-weapon-mode-tag">
+              [SEMI]
+            </span>
+          </button>
+        `;
+      } else {
+        btnHtml = `
+          <button class="dg-button dg-weapon-btn"
+                  data-weapon-id="${w.id}"
+                  data-weapon-name="${upperName}">
+            <span class="dg-weapon-label">
+              ${upperName}
+            </span>
+          </button>
+        `;
+      }
+
+      $wrap.append($(btnHtml));
     }
   }
 
@@ -1058,7 +1083,7 @@ Hooks.on("controlToken", (token, controlled) => {
           ).toUpperCase();
 
       const roll = new Roll("1d100");
-      await roll.evaluate({ async: true });
+      await roll.evaluate();
       const total = Number(roll.total ?? 0);
 
       const { outcome, crit } = this._dgOutcome(total, target);
@@ -1074,7 +1099,7 @@ Hooks.on("controlToken", (token, controlled) => {
             baseTarget,
             modifier: mod,
             target,
-            marked, // <-- drives sheet marking
+            marked,
             outcome,
             crit,
             systemKey,
@@ -1114,7 +1139,7 @@ Hooks.on("controlToken", (token, controlled) => {
       const target = Math.max(0, baseTarget + mod);
 
       const roll = new Roll("1d100");
-      await roll.evaluate({ async: true });
+      await roll.evaluate();
       const total = Number(roll.total ?? 0);
 
       const { outcome, crit } = this._dgOutcome(total, target);
@@ -1146,12 +1171,8 @@ Hooks.on("controlToken", (token, controlled) => {
 
   /**
    * Weapon attack:
-   * - Sends attack d100 via toMessage (DSN animates)
-   * - On success, handles Lethality (vs human) OR normal damage/UNNATURAL
-   * - Posts a compact CRT summary card afterwards
-   * - On failure, marks the linked skill just like other skill rolls
    */
-  static async rollWeaponAttack(itemId) {
+  static async rollWeaponAttack(itemId, { mode = null } = {}) {
     try {
       const actor = this._getCurrentActor();
       if (!actor) {
@@ -1239,9 +1260,9 @@ Hooks.on("controlToken", (token, controlled) => {
 
       // ---------------- ATTACK ROLL ----------------
       const attackRoll = new Roll("1d100");
-      await attackRoll.evaluate({ async: true });
-
+      await attackRoll.evaluate();
       const total = Number(attackRoll.total ?? 0);
+
       const { outcome, crit } = this._dgOutcome(total, target);
       const marked = outcome === "failure" || crit === "critFailure";
 
@@ -1265,6 +1286,39 @@ Hooks.on("controlToken", (token, controlled) => {
         },
       });
 
+      // ---------------- WEAPON SFX ----------------
+      try {
+        let fireMode = null;
+        if (mode === "auto") fireMode = "auto";
+        else if (mode === "semi") fireMode = "semi";
+
+        if (!fireMode) {
+          const fireModeRaw = (
+            sys.fireMode ||
+            sys.firemode ||
+            sys.mode ||
+            ""
+          )
+            .toString()
+            .toLowerCase();
+
+          fireMode =
+            fireModeRaw.includes("auto") ||
+            fireModeRaw.includes("burst") ||
+            fireModeRaw.includes("full")
+              ? "auto"
+              : "semi";
+        }
+
+        WeaponSoundManager.play({
+          actor,
+          weapon: item,
+          mode: fireMode,
+        });
+      } catch (e) {
+        console.warn("Delta Green UI | WeaponSoundManager.play failed:", e);
+      }
+
       // ---------------- DAMAGE / LETHALITY LOGIC ----------------
       const dmgFormula =
         sys.damageFormula || sys.damage || sys.dmg || sys.formula || null;
@@ -1275,11 +1329,9 @@ Hooks.on("controlToken", (token, controlled) => {
       let lethalHpDamage = null;
       let lethalUsed = false;
 
-      // Helper: convert the *lethality roll* into 2d10-style damage:
-      // 80 -> 8 + 0 = 8; 47 -> 4 + 7 = 11; 100/00 -> 10 + 10 = 20
       const hpDamageFromLethalityRoll = (value) => {
         if (value <= 0) return 0;
-        if (value >= 100) return 20; // 100 / "00" -> 10 + 10
+        if (value >= 100) return 20;
 
         const tens = Math.floor(value / 10);
         const ones = value % 10;
@@ -1288,7 +1340,6 @@ Hooks.on("controlToken", (token, controlled) => {
       };
 
       if (outcome === "success") {
-        // ---- LETHAL WEAPON vs HUMAN TARGET ----
         if (isLethalWeapon && lethalityRating > 0 && !targetIsUnnatural) {
           lethalUsed = true;
 
@@ -1297,9 +1348,8 @@ Hooks.on("controlToken", (token, controlled) => {
             effectiveLethality = Math.min(100, lethalityRating * 2);
           }
 
-          // Separate lethality roll
           const lethalityRoll = new Roll("1d100");
-          await lethalityRoll.evaluate({ async: true });
+          await lethalityRoll.evaluate();
           const lethalityTotal = Number(lethalityRoll.total ?? 0);
 
           if (game.dice3d) {
@@ -1307,7 +1357,6 @@ Hooks.on("controlToken", (token, controlled) => {
           }
 
           if (lethalityTotal <= effectiveLethality) {
-            // Instant kill: target drops to 0 HP.
             lethalKill = true;
             lethalHpDamage = null;
 
@@ -1315,10 +1364,9 @@ Hooks.on("controlToken", (token, controlled) => {
               <div><b>LETHALITY ROLL:</b> ${lethalityTotal} ≤ ${effectiveLethality}% — <span style="color:var(--dg-accent,inherit)">TARGET DROPS TO 0 HP</span>.</div>
             `;
           } else {
-            // Lethality failed → convert the lethality roll into HP damage
             let hpDmg = hpDamageFromLethalityRoll(lethalityTotal);
             if (crit === "critSuccess") {
-              hpDmg *= 2; // double HP damage on critical success
+              hpDmg *= 2;
             }
             lethalHpDamage = hpDmg;
 
@@ -1331,11 +1379,10 @@ Hooks.on("controlToken", (token, controlled) => {
           }
         }
 
-        // ---- NON-LETHAL / UNNATURAL / NON-LETHAL WEAPONS ----
         if (!lethalUsed && dmgFormula) {
           try {
             dmgRoll = new Roll(String(dmgFormula));
-            await dmgRoll.evaluate({ async: true });
+            await dmgRoll.evaluate();
             await dmgRoll.toMessage({
               speaker: ChatMessage.getSpeaker({ actor }),
               flavor: `DAMAGE: ${String(dmgFormula)}`,
@@ -1421,7 +1468,6 @@ Hooks.on("controlToken", (token, controlled) => {
         },
       });
 
-      // Reset one-shot modifier & refresh CRT log
       if (mod !== 0) this.setModifier(0);
       this.requestLoadMessages?.();
     } catch (err) {
@@ -1431,7 +1477,7 @@ Hooks.on("controlToken", (token, controlled) => {
   }
 
   /* ------------------------------------------------------------------------ */
-  /* SAN CHECK MACRO (dialog + adaptation + temporary insanity)              */
+  /* SAN CHECK MACRO                                                          */
   /* ------------------------------------------------------------------------ */
 
   static async runSanCheckDialogMacro() {
@@ -1454,28 +1500,28 @@ Hooks.on("controlToken", (token, controlled) => {
         "Your stomach drops; this is wrong in a way your mind can’t safely describe.",
         "You blink once, twice, hoping the world resets. It doesn’t.",
         "You will never sleep right again after this.",
-        "Something inside you gives way—like a support beam quietly snapping."
+        "Something inside you gives way—like a support beam quietly snapping.",
       ];
       const SAN_SUCCESS_LINES = [
         "You feel the panic rising—and force it back down where it belongs.",
         "Your pulse hammers, but training and habit slam the door on the worst of it.",
         "You catalog the horror, box it up in your head, and move on—for now.",
         "You swallow hard, steady your hands, and keep working the problem.",
-        "It shakes you, but it doesn’t break you. Not this time."
+        "It shakes you, but it doesn’t break you. Not this time.",
       ];
       const CRIT_SUCCESS_LINES = [
         "For one clear second, you see it for exactly what it is—and that clarity saves you.",
         "You ride the spike of terror like a wave, letting it crest and break without taking you under.",
         "You lock eyes with the horror and something in you just… refuses to yield.",
         "Your mind files this away with surgical precision: evidence, not nightmare.",
-        "You feel the crack coming—and reinforce it with sheer stubborn will."
+        "You feel the crack coming—and reinforce it with sheer stubborn will.",
       ];
       const CRIT_FAILURE_LINES = [
         "Your mind doesn’t just slip—it plummets, screaming, with no handhold in sight.",
         "Reality fractures into too many pieces to track; you grab one at random and cling to it.",
         "The laugh, the sob, the scream—you’re not sure which one comes out, only that it does.",
         "All your training vanishes; you’re a raw nerve, exposed to something that should not exist.",
-        "A terrible understanding floods in, burning away any hope that this is “just” madness."
+        "A terrible understanding floods in, burning away any hope that this is “just” madness.",
       ];
 
       const BP_REG_SUCCESS_LINES = [
@@ -1483,28 +1529,28 @@ Hooks.on("controlToken", (token, controlled) => {
         "You manage to function, hands steady, voice level—while something vital in you goes dark.",
         "You do everything right. You follow the training. And somehow that makes the fracture feel worse.",
         "You stay on your feet, stay on task, and only later notice you’ve left a piece of yourself behind.",
-        "You hold the line in the moment, but the person who walked into this scene isn’t the one walking out."
+        "You hold the line in the moment, but the person who walked into this scene isn’t the one walking out.",
       ];
       const BP_REG_FAILURE_LINES = [
         "The fear doesn’t just seep in—it floods, drowning whatever was holding you together.",
         "Your thoughts scatter like papers in a storm, and you know you’ll never gather them all again.",
         "You hear yourself make a sound—laugh, sob, gasp—you’re not sure which, only that it isn’t you.",
         "Something gives way behind your eyes, and the world tilts into a shape you cannot unsee.",
-        "You don’t collapse, but the support beams of your mind groan, crack, and finally give out."
+        "You don’t collapse, but the support beams of your mind groan, crack, and finally give out.",
       ];
       const BP_CRIT_SUCCESS_LINES = [
         "You understand exactly what you’re seeing, and that clarity slices something essential out of you.",
         "You process every detail with perfect, clinical precision—and feel your humanity slip a step behind.",
         "You lock everything away flawlessly, but the part of you that cared about the lock is gone.",
         "You master the terror, pin it down, and in doing so trade away the last of your illusions.",
-        "You stay sharp, efficient, unshakable—and realize, with distant curiosity, that you don’t feel much at all."
+        "You stay sharp, efficient, unshakable—and realize, with distant curiosity, that you don’t feel much at all.",
       ];
       const BP_CRIT_FAILURE_LINES = [
         "Your mind doesn’t just crack—it shatters, and you’re left clutching a single splinter that still feels “real.”",
         "Every defense fails at once, leaving raw nerve exposed to something that should never touch human thought.",
         "The world comes apart in too many pieces to track, and you grab onto the wrong one with both hands.",
         "You feel yourself step off the edge of who you were and start falling, with no idea where the bottom is.",
-        "There is a moment—just one—where you see the truth of it all, and that moment takes the rest of you with it."
+        "There is a moment—just one—where you see the truth of it all, and that moment takes the rest of you with it.",
       ];
 
       // ---------- 2. Read sheet values ----------
@@ -1524,10 +1570,9 @@ Hooks.on("controlToken", (token, controlled) => {
       );
 
       // ---------- 3. Dialog ----------
-      const sanDialog = await new Promise((resolve) => {
-        new Dialog({
-          title: `SAN Check for ${displayName}`,
-          content: `
+      const sanDialog = await new Dialog({
+        title: `SAN Check for ${displayName}`,
+        content: `
           <div style="display:flex;flex-direction:column;gap:8px;">
             <label>SAN source type:
               <select name="sanType">
@@ -1551,44 +1596,46 @@ Hooks.on("controlToken", (token, controlled) => {
             </label>
           </div>
         `,
-          buttons: {
-            ok: {
-              label: "Roll SAN",
-              callback: (html) => {
-                const success =
-                  (html.find('[name="success"]').val() || "0").trim();
-                const failure =
-                  (html.find('[name="failure"]').val() || "1d6").trim();
-                const modifier =
-                  parseInt(html.find('[name="modifier"]').val(), 10) || 0;
-                const sanType = (
-                  html.find('[name="sanType"]').val() || "other"
-                ).trim();
-                const markAdaptation = html
-                  .find('[name="markAdaptation"]').is(":checked");
+        buttons: {
+          ok: {
+            label: "Roll SAN",
+            callback: (html) => {
+              const success =
+                (html.find('[name="success"]').val() || "0").trim();
+              const failure =
+                (html.find('[name="failure"]').val() || "1d6").trim();
+              const modifier =
+                parseInt(html.find('[name="modifier"]').val(), 10) || 0;
+              const sanType = (
+                html.find('[name="sanType"]').val() || "other"
+              ).trim();
+              const markAdaptation = html
+                .find('[name="markAdaptation"]')
+                .is(":checked");
 
-                resolve({
-                  success,
-                  failure,
-                  modifier,
-                  sanType,
-                  markAdaptation
-                });
-              }
+              return {
+                success,
+                failure,
+                modifier,
+                sanType,
+                markAdaptation,
+              };
             },
-            cancel: { label: "Cancel", callback: () => resolve(null) }
           },
-          default: "ok"
-        }).render(true);
-      });
+          cancel: { label: "Cancel" },
+        },
+        default: "ok",
+        close: (html) => html, // to satisfy eslint; we ignore
+      }).render(true);
 
-      if (!sanDialog) return;
+      const result = await sanDialog;
+      if (!result || !result.success) return;
 
-      const successFormula = sanDialog.success || "0";
-      const failureFormula = sanDialog.failure || "1d6";
-      const modifier = Number(sanDialog.modifier || 0);
-      const sanType = sanDialog.sanType || "other";
-      const markAdaptation = !!sanDialog.markAdaptation;
+      const successFormula = result.success || "0";
+      const failureFormula = result.failure || "1d6";
+      const modifier = Number(result.modifier || 0);
+      const sanType = result.sanType || "other";
+      const markAdaptation = !!result.markAdaptation;
 
       // ---------- 4. Roll SAN check ----------
       const effectiveTarget = Math.max(
@@ -1596,7 +1643,7 @@ Hooks.on("controlToken", (token, controlled) => {
         Math.min(sanMax, sanCurrent + modifier)
       );
 
-      const sanRoll = await new Roll("1d100").evaluate({ async: true });
+      const sanRoll = await new Roll("1d100").evaluate();
       const rollTotal = Number(sanRoll.total || 0);
 
       const isSuccess = rollTotal <= effectiveTarget;
@@ -1607,9 +1654,8 @@ Hooks.on("controlToken", (token, controlled) => {
 
       const lossRoll = await new Roll(
         isSuccess ? successFormula : failureFormula
-      ).evaluate({ async: true });
+      ).evaluate();
 
-      // Show 3D dice if Dice So Nice is active
       if (game.dice3d) {
         await game.dice3d.showForRoll(sanRoll, game.user, true);
       }
@@ -1644,7 +1690,6 @@ Hooks.on("controlToken", (token, controlled) => {
         else if (!current2) pathToSet = `${basePath}.incident2`;
         else if (!current3) pathToSet = `${basePath}.incident3`;
 
-        // Already fully adapted
         if (!pathToSet) {
           ui.notifications?.info?.(`Already fully adapted to ${sanType}.`);
           return;
@@ -1684,7 +1729,7 @@ Hooks.on("controlToken", (token, controlled) => {
           await ChatMessage.create({
             user: game.user.id,
             speaker: ChatMessage.getSpeaker({ actor }),
-            content: `<p><b>${displayName}</b> has become <b>${label}</b>.</p>`
+            content: `<p><b>${displayName}</b> has become <b>${label}</b>.</p>`,
           });
         }
       }
@@ -1783,7 +1828,6 @@ Hooks.on("controlToken", (token, controlled) => {
         publicText = `<p><b>${displayName}</b>: ${line}</p><p><b>${tag}</b>.</p>`;
       }
 
-      // ---- TEMPORARY INSANITY: RAW = 5+ SAN lost in a single roll ----
       if (loss >= 5) {
         publicText += `
         <p style="margin-top: 8px;">
@@ -1803,10 +1847,8 @@ Hooks.on("controlToken", (token, controlled) => {
       await ChatMessage.create({
         user: game.user.id,
         speaker: ChatMessage.getSpeaker({ actor }),
-        content: publicText
+        content: publicText,
       });
-
-      // MailSystem handles its own refresh; nothing else to do here.
     } catch (err) {
       console.error("Delta Green UI | SAN macro error:", err);
       ui.notifications.error("Error running SAN check.");
@@ -1887,7 +1929,7 @@ Hooks.on("controlToken", (token, controlled) => {
       }
 
       const roll = new Roll(formula);
-      await roll.evaluate({ async: true });
+      await roll.evaluate();
 
       await roll.toMessage({
         speaker: ChatMessage.getSpeaker(),
@@ -1909,7 +1951,6 @@ Hooks.on("controlToken", (token, controlled) => {
     });
   }
 
-  // UPDATED: show target with BASE + modifier, and ☣ marker line
   static _buildRollContent(msg) {
     const roll = (msg.rolls && msg.rolls.length > 0 && msg.rolls[0]) || null;
     if (!roll) return msg.content;
@@ -1922,7 +1963,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
     let skillLabel = msg.flavor || "";
     let target =
-      dgFlags.target ?? 
+      dgFlags.target ??
       (dgFlags.baseTarget != null && dgFlags.modifier != null
         ? dgFlags.baseTarget + dgFlags.modifier
         : null);
@@ -1970,7 +2011,6 @@ Hooks.on("controlToken", (token, controlled) => {
       ? `<div class="dg-roll-marked">This skill is marked ☣</div>`
       : "";
 
-    // NEW: show BASE + modifier if we have them
     let targetLine = "";
     if (target != null) {
       const baseTarget = dgFlags.baseTarget;
@@ -2006,8 +2046,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
       if (this.messages.length === 0 || this.messages.length > 60) {
         this.messages = chatMessages.map((msg) => {
-          const isRoll =
-            (msg.rolls?.length ?? 0) > 0;
+          const isRoll = (msg.rolls?.length ?? 0) > 0;
 
           return {
             id: msg.id,
@@ -2024,8 +2063,7 @@ Hooks.on("controlToken", (token, controlled) => {
         for (const msg of chatMessages) {
           if (existing.has(msg.id)) continue;
 
-          const isRoll =
-            (msg.rolls?.length ?? 0) > 0;
+          const isRoll = (msg.rolls?.length ?? 0) > 0;
 
           add.push({
             id: msg.id,
@@ -2168,7 +2206,6 @@ Hooks.on("controlToken", (token, controlled) => {
 
       container.scrollTop(container[0].scrollHeight);
 
-      // Mirror into mini chat / roll feed window
       if (
         DeltaGreenUI &&
         typeof DeltaGreenUI.updateMiniChatWindow === "function"
@@ -2195,7 +2232,6 @@ Hooks.on("controlToken", (token, controlled) => {
       const results = [];
       const updates = {};
 
-      // Helper to process a collection of skills
       const processCollection = async (collection, basePath, isTyped = false) => {
         for (const [key, skill] of Object.entries(collection || {})) {
           const marked = !!skill?.failure;
@@ -2203,8 +2239,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
           const current = Number(skill?.proficiency ?? 0) || 0;
 
-          // Advancement roll: 1d100 > current skill → improve by 1d4
-          const testRoll = await new Roll("1d100").evaluate({ async: true });
+          const testRoll = await new Roll("1d100").evaluate();
           const testTotal = Number(testRoll.total ?? 0);
 
           let improved = false;
@@ -2212,17 +2247,15 @@ Hooks.on("controlToken", (token, controlled) => {
           let newValue = current;
 
           if (testTotal > current) {
-            const incRoll = await new Roll("1d4").evaluate({ async: true });
+            const incRoll = await new Roll("1d4").evaluate();
             delta = Number(incRoll.total ?? 0) || 0;
             newValue = Math.min(99, current + delta);
             updates[`${basePath}.${key}.proficiency`] = newValue;
             improved = true;
           }
 
-          // Clear the failure/marked flag either way
           updates[`${basePath}.${key}.failure`] = false;
 
-          // Build a nice label
           let label;
           if (isTyped) {
             const group = (skill.group || "TYPED").toUpperCase();
@@ -2244,12 +2277,11 @@ Hooks.on("controlToken", (token, controlled) => {
             newValue,
             improved,
             delta,
-            testTotal
+            testTotal,
           });
         }
       };
 
-      // Process base skills + typed skills
       await processCollection(actor.system?.skills, "system.skills", false);
       await processCollection(
         actor.system?.typedSkills,
@@ -2262,12 +2294,10 @@ Hooks.on("controlToken", (token, controlled) => {
         return;
       }
 
-      // Apply updates
       if (Object.keys(updates).length > 0) {
         await actor.update(updates);
       }
 
-      // Build summary message
       const lines = results.map((r) => {
         const baseLine = `${r.label}: ${r.current}% → ${
           r.improved ? `<b>${r.newValue}%</b>` : `${r.newValue}%`
@@ -2298,10 +2328,9 @@ Hooks.on("controlToken", (token, controlled) => {
         user: game.user.id,
         speaker: ChatMessage.getSpeaker({ actor }),
         content,
-        type: CHAT_STYLES.OTHER
+        type: CHAT_STYLES.OTHER,
       });
 
-      // Refresh mail / rolls view
       this.requestLoadMessages?.();
     } catch (err) {
       console.error(
@@ -2316,12 +2345,6 @@ Hooks.on("controlToken", (token, controlled) => {
   /* SKILL MARKING FROM FLAGS                                                 */
   /* ------------------------------------------------------------------------ */
 
-  /**
-   * Mark a skill on the actor based on flags on a ChatMessage.
-   * - Supports base skills (system.skills.KEY)
-   * - Supports typed skills (system.typedSkills.KEY) when flags.typed === true
-   * - Triggered from renderChatMessage for our own flagged rolls
-   */
   static async _markSkillOnActorFromFlags(message) {
     try {
       const dgFlags = message.flags?.[DeltaGreenUI.ID];
@@ -2330,7 +2353,6 @@ Hooks.on("controlToken", (token, controlled) => {
       const { systemKey, marked, typed, skillRoll, weaponAttack } = dgFlags;
       if (!marked || !systemKey) return;
 
-      // Only treat as “marking” for genuine skill-type rolls
       if (!skillRoll && !weaponAttack) return;
 
       const speaker = message.speaker || {};
@@ -2343,7 +2365,6 @@ Hooks.on("controlToken", (token, controlled) => {
         ? `system.typedSkills.${systemKey}`
         : `system.skills.${systemKey}`;
 
-      // Core DG uses `.failure` as the “marked for advancement” flag
       const alreadyFailed = foundry.utils.getProperty(
         actor,
         `${basePath}.failure`
@@ -2363,7 +2384,6 @@ Hooks.on("controlToken", (token, controlled) => {
     try {
       if (!message) return;
 
-      // NEW: if this roll is flagged as "marked", actually mark the skill on the actor
       const dgFlags = message.flags?.[DeltaGreenUI.ID];
       if (
         dgFlags &&
@@ -2375,8 +2395,7 @@ Hooks.on("controlToken", (token, controlled) => {
 
       if (this.messages.find((m) => m.id === message.id)) return;
 
-      const isRoll =
-        (message.rolls?.length ?? 0) > 0;
+      const isRoll = (message.rolls?.length ?? 0) > 0;
 
       this.messages.push({
         id: message.id,
@@ -2397,39 +2416,38 @@ Hooks.on("controlToken", (token, controlled) => {
   /* BATCHED REFRESH HELPERS                                                  */
   /* ------------------------------------------------------------------------ */
 
-static _scheduleActorRefresh(actor) {
-  const current = this._getCurrentActor();
-  if (!current || actor?.id !== current.id) return;
+  static _scheduleActorRefresh(actor) {
+    const current = this._getCurrentActor();
+    if (!current || actor?.id !== current.id) return;
 
-  // If it's the same actor we *just* refreshed, don't bother
-  if (this._lastActorId === current.id && !this._actorRefreshTimeout) {
-    return;
-  }
-
-  this._pendingActorRefreshActor = actor || current;
-
-  if (this._actorRefreshTimeout) return;
-
-  this._actorRefreshTimeout = setTimeout(() => {
-    try {
-      const a = this._pendingActorRefreshActor || this._getCurrentActor();
-      if (!a) return;
-
-      this._lastActorId = a.id; // remember who we refreshed for
-
-      this.refreshSkillHotbar();
-      this.refreshTypedSkillButtons();
-      this.refreshWeaponHotbar();
-      this.refreshStatButtons();
-      this.refreshHpWpPanel(a);
-      this._refreshSanButtonStatus(a);
-      this._updateMailHeaderActorName(a);
-    } finally {
-      this._actorRefreshTimeout = null;
-      this._pendingActorRefreshActor = null;
+    if (this._lastActorId === current.id && !this._actorRefreshTimeout) {
+      return;
     }
-  }, 200); 
-}
+
+    this._pendingActorRefreshActor = actor || current;
+
+    if (this._actorRefreshTimeout) return;
+
+    this._actorRefreshTimeout = setTimeout(() => {
+      try {
+        const a = this._pendingActorRefreshActor || this._getCurrentActor();
+        if (!a) return;
+
+        this._lastActorId = a.id;
+
+        this.refreshSkillHotbar();
+        this.refreshTypedSkillButtons();
+        this.refreshWeaponHotbar();
+        this.refreshStatButtons();
+        this.refreshHpWpPanel(a);
+        this._refreshSanButtonStatus(a);
+        this._updateMailHeaderActorName(a);
+      } finally {
+        this._actorRefreshTimeout = null;
+        this._pendingActorRefreshActor = null;
+      }
+    }, 200);
+  }
 
   static requestLoadMessages() {
     if (this._loadMessagesTimeout) return;
@@ -2467,27 +2485,22 @@ static _scheduleActorRefresh(actor) {
 $(document).on("click", "#dg-toggle-skill-numbers", async (event) => {
   event.preventDefault();
 
-  // Flip the flag
   MailSystem.showSkillNumbers = !MailSystem.showSkillNumbers;
 
   const $btn = $(event.currentTarget);
 
-  // Label describes what will happen if you click it
   if (MailSystem.showSkillNumbers) {
-    // Numbers are currently visible; clicking will hide them
     $btn.text("HIDE %");
     $btn
       .removeClass("dg-skillnumbers-hidden")
       .addClass("dg-skillnumbers-visible");
   } else {
-    // Numbers are currently hidden; clicking will show them
     $btn.text("SHOW %");
     $btn
       .removeClass("dg-skillnumbers-visible")
       .addClass("dg-skillnumbers-hidden");
   }
 
-  // Persist per-user preference
   try {
     await game.user?.setFlag?.(
       DeltaGreenUI.ID,
@@ -2501,7 +2514,6 @@ $(document).on("click", "#dg-toggle-skill-numbers", async (event) => {
     );
   }
 
-  // Rebuild the buttons so they reflect the new mode
   MailSystem.refreshSkillHotbar();
   MailSystem.refreshTypedSkillButtons();
   MailSystem.refreshStatButtons?.();
