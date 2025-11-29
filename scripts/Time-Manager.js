@@ -554,3 +554,6 @@ export class TimeManager {
     return "NIGHT";
   }
 }
+Hooks.once("init", () => {
+  TimeManager.init();
+});
