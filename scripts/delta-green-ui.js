@@ -1420,11 +1420,6 @@ static applyFont(fontKey) {
 
   /* ------------------------------ Login Button ---------------------------- */
 
-  // Login button fully removed; kept as an empty stub for backward safety.
-  static addLoginButton() {
-    // no-op
-  }
-
   static openInterface() {
     const container = $("#dg-crt-container");
     if (!container.length) {

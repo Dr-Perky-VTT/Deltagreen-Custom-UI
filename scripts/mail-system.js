@@ -657,7 +657,12 @@ export class MailSystem {
         statsRoot[key.toLowerCase?.()] ||
         statsRoot[key.toUpperCase?.()];
 
-      const rawVal = statObj?.value ?? statObj?.score ?? statObj;
+      const rawVal =
+        statObj?.x5 ??
+        statObj?.value ??
+        statObj?.score ??
+        statObj;
+
       const val = Number(rawVal);
 
       if (!statObj || Number.isNaN(val)) {
@@ -677,8 +682,10 @@ export class MailSystem {
 
       if (showNums) {
         let percent = val;
-        if (val <= 20) {
-          percent = val * 5;
+
+        // If it's clearly a base stat (<= 20) and not already x5, convert.
+        if (percent <= 20 && statObj?.x5 == null) {
+          percent = percent * 5;
         }
 
         if (percent < 0) percent = 0;
@@ -1172,6 +1179,12 @@ export class MailSystem {
   /**
    * Weapon attack:
    */
+  /**
+   * Weapon attack:
+   */
+  /**
+   * Weapon attack:
+   */
   static async rollWeaponAttack(itemId, { mode = null } = {}) {
     try {
       const actor = this._getCurrentActor();
@@ -1245,16 +1258,105 @@ export class MailSystem {
         targetIsUnnatural = !!dialogData.unnatural;
       }
 
-      // ---------------- SKILL / TARGET SETUP ----------------
-      const linkedKey =
-        sys.skillKey || sys.skill || sys.linkedSkill || "firearms";
-      const systemKey = this._mapSkillKey(linkedKey);
+      // ---------------- SKILL / STAT SETUP ----------------
+      const linkedRawKey =
+        sys.skillKey || sys.skill || sys.linkedSkill || sys.skillStat || "firearms";
+
+      // Strip "*5", " x5", etc. from things like "DEX*5"
+      let normalizedKey = String(linkedRawKey).trim();
+      normalizedKey = normalizedKey.replace(/\s*x?\*?\s*5\b/gi, "");
+      normalizedKey = normalizedKey || "firearms";
+
+      const lowerKey = normalizedKey.toLowerCase();
+
+      const statsRoot =
+        actor.system?.stats ||
+        actor.system?.statistics ||
+        actor.system?.characteristics ||
+        actor.system?.attributes ||
+        {};
 
       const skills = actor.system?.skills || {};
       const typed = actor.system?.typedSkills || {};
-      const skillObj = skills[systemKey] || typed[systemKey];
 
-      const baseTarget = Number(skillObj?.proficiency ?? 0) || 0;
+      const coreStatKeys = ["str", "con", "dex", "int", "pow", "cha", "siz", "app"];
+      const isLuckStat = lowerKey === "luck";
+      const isCoreStat = coreStatKeys.includes(lowerKey) || isLuckStat;
+
+      let baseTarget = 0;
+      let usesStatX5 = false;
+      let systemKeyForFlags = normalizedKey; // what we store in flags
+
+      if (isCoreStat) {
+        // ALWAYS treat these as stats, not skills – EVEN FOR WEAPONS
+        usesStatX5 = true;
+
+        if (isLuckStat) {
+          // If you later wire a real Luck stat, replace this.
+          baseTarget = 50;
+          systemKeyForFlags = "LUCK";
+        } else {
+          const statObj =
+            statsRoot[normalizedKey] ||
+            statsRoot[lowerKey] ||
+            statsRoot[normalizedKey.toUpperCase()] ||
+            statsRoot[lowerKey.toUpperCase?.()];
+
+          let raw =
+            Number(
+              statObj?.x5 ??
+              statObj?.value ??
+              statObj?.score ??
+              statObj
+            ) || 0;
+
+          // If x5 not present and this looks like a base stat (≤ 20), convert to x5
+          if (statObj && statObj.x5 == null && raw > 0 && raw <= 20) {
+            raw = raw * 5;
+          }
+
+          baseTarget = raw;
+          systemKeyForFlags = lowerKey.toUpperCase();
+        }
+      } else {
+        // Not a core stat: treat as a SKILL first
+        const skillKey = this._mapSkillKey(normalizedKey);
+        let skillObj = skills[skillKey] || typed[skillKey];
+
+        if (skillObj) {
+          baseTarget = Number(skillObj.proficiency ?? 0) || 0;
+          systemKeyForFlags = skillKey;
+        } else {
+          // Last-resort: weird stat hiding in statsRoot
+          const statObj =
+            statsRoot[skillKey] ||
+            statsRoot[skillKey.toLowerCase?.()] ||
+            statsRoot[skillKey.toUpperCase?.()];
+
+          if (statObj) {
+            usesStatX5 = true;
+            let raw =
+              Number(
+                statObj.x5 ??
+                statObj.value ??
+                statObj.score ??
+                statObj
+              ) || 0;
+
+            if (statObj.x5 == null && raw > 0 && raw <= 20) {
+              raw = raw * 5;
+            }
+
+            baseTarget = raw;
+            systemKeyForFlags = skillKey.toUpperCase();
+          } else {
+            // Unknown key: treat as 0% and DO NOT mark a real skill
+            baseTarget = 0;
+            systemKeyForFlags = skillKey;
+          }
+        }
+      }
+
       const mod = Number(this.currentModifier || 0);
       const target = Math.max(0, baseTarget + mod);
 
@@ -1264,7 +1366,13 @@ export class MailSystem {
       const total = Number(attackRoll.total ?? 0);
 
       const { outcome, crit } = this._dgOutcome(total, target);
-      const marked = outcome === "failure" || crit === "critFailure";
+
+      // IMPORTANT:
+      // - We ONLY mark when this is a real skill-based roll (not STAT×5, not weird custom).
+      const marked =
+        !usesStatX5 &&
+        baseTarget > 0 &&
+        (outcome === "failure" || crit === "critFailure");
 
       const attackFlavor = `ATTACK: ${(item.name || "WEAPON").toUpperCase()}`;
       await attackRoll.toMessage({
@@ -1274,7 +1382,7 @@ export class MailSystem {
           [DeltaGreenUI.ID]: {
             weaponAttack: true,
             itemId,
-            systemKey,
+            systemKey: systemKeyForFlags,
             baseTarget,
             modifier: mod,
             target,
@@ -1282,6 +1390,7 @@ export class MailSystem {
             crit,
             isAttackCard: true,
             marked,
+            usesStatX5,
           },
         },
       });
@@ -1332,10 +1441,8 @@ export class MailSystem {
       const hpDamageFromLethalityRoll = (value) => {
         if (value <= 0) return 0;
         if (value >= 100) return 20;
-
         const tens = Math.floor(value / 10);
         const ones = value % 10;
-
         return tens + ones;
       };
 
@@ -1417,7 +1524,7 @@ export class MailSystem {
           <div class="dg-roll-target">
             TARGET: ${target}% (BASE ${baseTarget}${
               mod ? (mod > 0 ? ` +${mod}` : ` ${mod}`) : ""
-            })
+            }${usesStatX5 ? " | STAT×5" : ""})
           </div>
           <div class="dg-roll-value ${
             crit === "critSuccess"
@@ -1452,7 +1559,7 @@ export class MailSystem {
           [DeltaGreenUI.ID]: {
             weaponSummary: true,
             itemId,
-            systemKey,
+            systemKey: systemKeyForFlags,
             baseTarget,
             modifier: mod,
             target,
@@ -1464,6 +1571,7 @@ export class MailSystem {
             targetIsUnnatural,
             lethalKill,
             lethalHpDamage,
+            usesStatX5,
           },
         },
       });
@@ -2007,9 +2115,10 @@ export class MailSystem {
     else if (isFailure) valueClass += " dg-roll-failure";
     else if (isSuccess) valueClass += " dg-roll-success";
 
-    const markedLine = isMarked
-      ? `<div class="dg-roll-marked">This skill is marked ☣</div>`
-      : "";
+    const markedLine =
+      isMarked && (isSkill || isStat)
+        ? `<div class="dg-roll-marked">This skill is marked ☣</div>`
+        : "";
 
     let targetLine = "";
     if (target != null) {
@@ -2350,10 +2459,23 @@ export class MailSystem {
       const dgFlags = message.flags?.[DeltaGreenUI.ID];
       if (!dgFlags) return;
 
-      const { systemKey, marked, typed, skillRoll, weaponAttack } = dgFlags;
+      const {
+        systemKey,
+        marked,
+        typed,
+        skillRoll,
+        weaponAttack,
+        usesStatX5,
+      } = dgFlags;
+
+      // Must explicitly be marked and have a key
       if (!marked || !systemKey) return;
 
+      // Only care about actual skill rolls or weapon attacks
       if (!skillRoll && !weaponAttack) return;
+
+      // DO NOT mark for STAT-based weapon rolls (DEX×5, etc.)
+      if (weaponAttack && usesStatX5) return;
 
       const speaker = message.speaker || {};
       const actorId = speaker.actor;
@@ -2365,10 +2487,11 @@ export class MailSystem {
         ? `system.typedSkills.${systemKey}`
         : `system.skills.${systemKey}`;
 
-      const alreadyFailed = foundry.utils.getProperty(
-        actor,
-        `${basePath}.failure`
-      );
+      // If there's no real skill object here, bail (don't create ghost skills)
+      const skillData = foundry.utils.getProperty(actor, basePath);
+      if (!skillData || typeof skillData !== "object") return;
+
+      const alreadyFailed = skillData.failure;
       if (alreadyFailed) return;
 
       const updates = {};
@@ -2388,7 +2511,8 @@ export class MailSystem {
       if (
         dgFlags &&
         dgFlags.marked &&
-        (dgFlags.skillRoll || dgFlags.weaponAttack)
+        dgFlags.skillRoll &&         // only from skill rolls
+        !dgFlags.weaponAttack        // never from weapon-only attacks
       ) {
         this._markSkillOnActorFromFlags(message);
       }

@@ -426,9 +426,22 @@
     --dg-scanline-opacity: 0.4;
 }
 /* Use the current CRT font (or Ac437 as fallback) in DG UI + popups */
-#dg-crt-container, #dg-crt-container *, #dg-journal-window, #dg-journal-window *, #dg-case-study-form, #dg-case-study-form *, #dg-vehicle-form, #dg-vehicle-form *, .dg-record-window, .dg-record-window * {
+#dg-crt-container, 
+#dg-crt-container *, 
+#dg-case-study-form, 
+#dg-case-study-form *,
+#dg-vehicle-form, 
+#dg-vehicle-form *, 
+.dg-record-window, .dg-record-window * {
     font-family: var(--dg-crt-font-family, "DG DG One"), monospace !important;
 }
+/* CRT-ish frame for the journal popup header + close button */
+#dg-journal-window,
+#dg-journal-window-header,
+#dg-journal-close {
+  font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+}
+
 /* ========================================================================== */
 /* CORE CRT LAYOUT – DOCKED TOP BAR + DROPDOWN */
 /* ========================================================================== */
@@ -830,24 +843,6 @@
     padding: 3px 6px;
     line-height: 1.1;
     text-align: center;
-}
-/* ========================================================================== */
-/* LOGIN BUTTON */
-/* ========================================================================== */
-#dg-login-button {
-    position: fixed;
-    top: 60px;
-    left: 100px;
-    z-index: 45;
-    background: var(--crt-text);
-    color: var(--crt-bg);
-    border: none;
-    padding: 3px 6px;
-    cursor: pointer;
-    font-size: 1em;
-    width: auto;
-    height: auto;
-    line-height: 1;
 }
 /* ========================================================================== */
 /* AGENT INFO / PLAYER LIST / WARNINGS */

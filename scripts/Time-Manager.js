@@ -328,7 +328,8 @@ export class TimeManager {
             cancel: { label: "Cancel" }
           },
           default: "cancel"
-        }).render(true);
+        }, {
+		classes: ["dg-ui-dialog", "dg-time-log-dialog"]}).render(true);
       });
     }
   }
@@ -514,7 +515,8 @@ export class TimeManager {
         }
       },
       default: "add"
-    }).render(true);
+    }, {
+	classes: ["dg-ui-dialog", "dg-time-log-dialog"]}).render(true);
   }
 
   /* ---------------------------------------------------------------------- */

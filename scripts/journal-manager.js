@@ -203,13 +203,18 @@ export class JournalManager {
   /* PAGE / CONTENT HELPERS                                             */
   /* ------------------------------------------------------------------ */
 
-  /**
+   /**
    * Enrich HTML so @UUID[...] links, inline rolls, etc. work.
    */
   static async _enrich(content, journal) {
     if (!content) return "";
+
+    // v13+ TextEditor lives under foundry.applications.ux.TextEditor.implementation
+    const TextEditorImpl =
+      foundry?.applications?.ux?.TextEditor?.implementation ?? TextEditor;
+
     try {
-      const enriched = await TextEditor.enrichHTML(content, {
+      const enriched = await TextEditorImpl.enrichHTML(content, {
         async: true,
         secrets: false,
         entities: true,
@@ -221,6 +226,7 @@ export class JournalManager {
       return content;
     }
   }
+
 
   static _getImageSrcFromPage(page, journal) {
     return (
