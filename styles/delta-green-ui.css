@@ -637,7 +637,7 @@
     color: var(--crt-text) !important;
 }
 
-}
+
 .dg-form-textarea {
     min-height: 100px;
     resize: vertical;
@@ -1226,15 +1226,108 @@
     border-color: #f33;
     color: #f33;
 }
+
 /* ========================================================================== */
-/* DIALOG / WINDOW THEMING (GLOBAL) */
+/* DIALOG / WINDOW THEMING (GLOBAL)                                          */
 /* ========================================================================== */
+
+/* Base Foundry dialog chrome – dark CRT skin, BUT keep Foundry's own fonts */
+.app.window-app.dialog {
+    background-color: var(--crt-bg) !important;
+    border: 2px solid var(--crt-text) !important;
+    color: var(--crt-text) !important;
+}
+
+/* Header bar */
+.app.window-app.dialog .window-header {
+    background: var(--crt-bg) !important;
+    border-bottom: 1px solid var(--crt-text) !important;
+    color: var(--crt-text) !important;
+}
+
+/* Title text – tinted + uppercase, but no font override */
+.app.window-app.dialog .window-title {
+    color: var(--crt-text) !important;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+/* Main content + button row */
+.app.window-app.dialog .dialog-content {
+    background-color: var(--crt-bg) !important;
+    color: var(--crt-text) !important;
+}
+
+.app.window-app.dialog .dialog-buttons {
+    background-color: var(--crt-bg) !important;
+    border-top: 1px solid var(--crt-text) !important;
+}
+
+/* Buttons: CRT colors / hover, but keep whatever font Foundry uses */
+.app.window-app.dialog .dialog-buttons button {
+    background-color: var(--crt-text) !important;
+    color: var(--crt-bg) !important;
+    border: 1px solid var(--crt-text) !important;
+    font-size: 0.75em;
+    padding: 3px 8px;
+    cursor: pointer; gap: 6px;
+}
+
+.app.window-app.dialog .dialog-buttons button:hover {
+    background-color: var(--crt-highlight) !important;
+    color: var(--crt-bg) !important;
+    border-color: var(--crt-highlight) !important;   padding: 3px 8px;
+}
+
+/* Even if Foundry tries to mark a dialog "light", keep it dark CRT */
+.app.window-app.dialog.themed.theme-light .window-content {
+    background: var(--crt-bg, #000) !important;
+    color: var(--crt-text, #00f8ff) !important;
+	
+}
+
+/* ========================================================================== */
+/* DG UI DIALOGS – CRT FONT ONLY FOR OUR WINDOWS                             */
+/* ========================================================================== */
+
+/* Any dialog you create in JS with classes: ["dg-ui-dialog", "..."] */
+.dg-ui-dialog .window-content {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+    color: var(--crt-text) !important;
+	background: var(--crt-bg) !important;
+    text-transform: uppercase;
+    font-size: 0.9em;    padding: 3px 8px;
+}
+
+
+.dg-ui-dialog .window-header {    
+    font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	background: var(--crt-bg) !important;
+    border-bottom: 1px solid var(--crt-text) !important;
+    color: var(--crt-text) !important;
+}
+
+.dg-ui-dialog .window-title {    
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	color: var(--crt-text) !important;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+.dg-ui-dialog .dialog-buttons button {
+    font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	background-color: var(--crt-text) !important;
+    color: var(--crt-bg) !important;
+    border: 1px solid var(--crt-text) !important; gap: 6px;
+    font-size: 0.75em;
+    padding: 3px 8px;
+    cursor: pointer;
+}
 
 /* ========================================================================== */
 /* CUSTOM ROLL RESULT LOOK */
 /* ========================================================================== */
 .dg-roll-result {
-    border: 2px solid var(--dg-crt-primary);
+    border: 2px solid var(--crt-primary);
     background: linear-gradient(to bottom, #333, #111);
     padding: 8px 12px;
     margin: 6px 0;
@@ -2000,8 +2093,8 @@ body.dg-crt-on {
     height: 13px;
     cursor: pointer;
     margin: 0 2px;
-    color: dg-color-accent;
-    */
+    color: var(--dg-color-accent);
+    
 }
 /* Adapted tag (filled in by JS when adapted) */
 .dg-psyche-adapt-tag {
