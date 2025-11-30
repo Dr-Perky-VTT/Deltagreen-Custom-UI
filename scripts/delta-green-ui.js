@@ -1305,49 +1305,50 @@ static applyTabVisibility() {
     this.updateDynamicElements();
   }
 
-  static applyFont(fontKey) {
-    try {
-      const root = document.documentElement;
-      if (!root) return;
+static applyFont(fontKey) {
+  try {
+    const root = document.documentElement;
+    if (!root) return;
 
-      const key = (fontKey || "").trim();
+    const key = (fontKey || "").trim();
+    const container = document.getElementById("dg-crt-container");
 
-      // Empty -> use CSS default (your DG fallback in CSS)
-      if (!key) {
-        root.style.removeProperty("--dg-crt-font-family");
-        document.body.classList.remove("dg-crt-font-custom");
-      } else {
-        let family = key;
+    // Empty -> use CSS default (your DG fallback in CSS)
+    if (!key) {
+      root.style.removeProperty("--dg-crt-font-family");
+      if (container) container.classList.remove("dg-crt-font-custom");
+    } else {
+      let family = key;
 
-        // If this key exists in CONFIG.fontDefinitions, prefer its "family"
-        try {
-          const def = CONFIG?.fontDefinitions?.[key];
-          if (def && Array.isArray(def.fonts) && def.fonts.length > 0) {
-            const first = def.fonts[0];
-            if (first?.family) {
-              family = first.family;
-            }
+      // If this key exists in CONFIG.fontDefinitions, prefer its "family"
+      try {
+        const def = CONFIG?.fontDefinitions?.[key];
+        if (def && Array.isArray(def.fonts) && def.fonts.length > 0) {
+          const first = def.fonts[0];
+          if (first?.family) {
+            family = first.family;
           }
-        } catch (err) {
-          console.warn(
-            "Delta Green UI | Error resolving font family from CONFIG.fontDefinitions:",
-            err
-          );
         }
-
-        // Final CSS stack: chosen family → system UI → monospace
-        const cssVal = `'${family}', system-ui, monospace`;
-        root.style.setProperty("--dg-crt-font-family", cssVal);
-        document.body.classList.add("dg-crt-font-custom");
+      } catch (err) {
+        console.warn(
+          "Delta Green UI | Error resolving font family from CONFIG.fontDefinitions:",
+          err
+        );
       }
 
-      // Keep CRT dropdown in sync if it's present
-      const select = document.getElementById("dg-font-select");
-      if (select) select.value = key;
-    } catch (e) {
-      console.error("Delta Green UI | Error applying CRT font:", e);
+      // Final CSS stack: chosen family → system UI → monospace
+      const cssVal = `'${family}', system-ui, monospace`;
+      root.style.setProperty("--dg-crt-font-family", cssVal);
+      if (container) container.classList.add("dg-crt-font-custom");
     }
+
+    // Keep CRT dropdown in sync if it's present
+    const select = document.getElementById("dg-font-select");
+    if (select) select.value = key;
+  } catch (e) {
+    console.error("Delta Green UI | Error applying CRT font:", e);
   }
+}
 
   static applyScanlineIntensity(value) {
     try {

@@ -425,10 +425,6 @@
     /* NEW: default scanline intensity (0–1), controlled by settings */
     --dg-scanline-opacity: 0.4;
 }
-/* Base CRT font for the whole page when DG CRT is “on” */
-body.dg-crt-on {
-    font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
-}
 /* Use the current CRT font (or Ac437 as fallback) in DG UI + popups */
 #dg-crt-container, #dg-crt-container *, #dg-journal-window, #dg-journal-window *, #dg-case-study-form, #dg-case-study-form *, #dg-vehicle-form, #dg-vehicle-form *, .dg-record-window, .dg-record-window * {
     font-family: var(--dg-crt-font-family, "DG DG One"), monospace !important;
@@ -1233,42 +1229,7 @@ body.dg-crt-on {
 /* ========================================================================== */
 /* DIALOG / WINDOW THEMING (GLOBAL) */
 /* ========================================================================== */
-.app.window-app.dialog {
-    background-color: var(--crt-bg) !important;
-    border: 2px solid var(--crt-text) !important;
-    color: var(--crt-text) !important;
-    font-family: var(--dg-crt-font-family, "DG One"), monospace !important;
-}
-.app.window-app.dialog .window-header {
-    background: var(--crt-bg) !important;
-    border-bottom: 1px solid var(--crt-text) !important;
-    color: var(--crt-text) !important;
-}
-.app.window-app.dialog .window-title {
-    color: var(--crt-text) !important;
-    text-transform: uppercase;
-    font-size: 0.9em;
-}
-.app.window-app.dialog .dialog-content {
-    background-color: var(--crt-bg) !important;
-    color: var(--crt-text) !important;
-}
-.app.window-app.dialog .dialog-buttons {
-    background-color: var(--crt-bg) !important;
-    border-top: 1px solid var(--crt-text) !important;
-}
-.app.window-app.dialog .dialog-buttons button {
-    background-color: var(--crt-text) !important;
-    color: var(--crt-bg) !important;
-    border: 1px solid var(--crt-text) !important;
-    font-family: var(--dg-crt-font-family, "DG One"), monospace !important;
-    font-size: 0.75em;
-    padding: 3px 8px;
-    cursor: pointer;
-}
-.app.window-app.dialog .dialog-buttons button:hover {
-    background-color: var(--crt-highlight) !important;
-}
+
 /* ========================================================================== */
 /* CUSTOM ROLL RESULT LOOK */
 /* ========================================================================== */
