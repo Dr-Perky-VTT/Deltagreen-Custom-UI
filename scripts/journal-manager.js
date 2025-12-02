@@ -78,6 +78,74 @@ export class JournalManager {
         $body.slideToggle(150);
       });
 
+    // OPEN PDF button in CRT -> open native PDF page sheet
+    $(document)
+      .off("click", ".dg-open-pdf")
+      .on("click", ".dg-open-pdf", async function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const journalId = this.dataset.journalId;
+        const pageId = this.dataset.pageId;
+        if (!journalId || !pageId) return;
+
+        const journal = game.journal.get(journalId);
+        if (!journal?.pages) return;
+
+        const page = journal.pages.get(pageId);
+        if (!page) return;
+
+        try {
+          const canView = page.testUserPermission(
+            game.user,
+            CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER
+          );
+          if (!canView) {
+            ui.notifications.warn("You don't have permission to view this PDF.");
+            return;
+          }
+
+          page.sheet.render(true);
+        } catch (err) {
+          console.error("Delta Green UI | Error opening PDF page sheet", err);
+          ui.notifications.error("Error opening PDF.");
+        }
+      });
+
+    // OPEN VIDEO button in CRT -> open native video page sheet
+    $(document)
+      .off("click", ".dg-open-video")
+      .on("click", ".dg-open-video", async function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const journalId = this.dataset.journalId;
+        const pageId = this.dataset.pageId;
+        if (!journalId || !pageId) return;
+
+        const journal = game.journal.get(journalId);
+        if (!journal?.pages) return;
+
+        const page = journal.pages.get(pageId);
+        if (!page) return;
+
+        try {
+          const canView = page.testUserPermission(
+            game.user,
+            CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER
+          );
+          if (!canView) {
+            ui.notifications.warn("You don't have permission to view this video.");
+            return;
+          }
+
+          page.sheet.render(true);
+        } catch (err) {
+          console.error("Delta Green UI | Error opening video page sheet", err);
+          ui.notifications.error("Error opening video.");
+        }
+      });
+
     // Right-click delete on journal list items in the CRT
     $(document)
       .off("contextmenu", "#dg-journals-list li, #dg-journals-list .dg-result-item")
@@ -203,7 +271,7 @@ export class JournalManager {
   /* PAGE / CONTENT HELPERS                                             */
   /* ------------------------------------------------------------------ */
 
-   /**
+  /**
    * Enrich HTML so @UUID[...] links, inline rolls, etc. work.
    */
   static async _enrich(content, journal) {
@@ -226,7 +294,6 @@ export class JournalManager {
       return content;
     }
   }
-
 
   static _getImageSrcFromPage(page, journal) {
     return (
@@ -253,7 +320,7 @@ export class JournalManager {
   }
 
   /**
-   * Build HTML for the content of a single page (text or image)
+   * Build HTML for the content of a single page (text, image, pdf, video)
    */
   static async _buildPageBodyHtml(page, journal) {
     // TEXT PAGE
@@ -293,6 +360,77 @@ export class JournalManager {
       `;
     }
 
+    // PDF PAGE
+    if (page.type === "pdf") {
+      const displayName =
+        page.name ||
+        page.title ||
+        "PDF Document";
+
+      const src =
+        page.src ||
+        page?.pdf?.src ||
+        page?.data?.src ||
+        "";
+
+      const srcLabel = src
+        ? `<div class="dg-journal-pdf-src">${src}</div>`
+        : "";
+
+      return `
+        <div class="dg-journal-pdf-wrapper">
+          <div class="dg-journal-pdf-info">
+            <span class="dg-journal-pdf-icon"><i class="fas fa-file-pdf"></i></span>
+            <span class="dg-journal-pdf-name">${displayName}</span>
+          </div>
+          ${srcLabel}
+          <button
+            class="dg-open-pdf"
+            data-journal-id="${journal.id}"
+            data-page-id="${page.id}"
+          >
+            OPEN PDF
+          </button>
+        </div>
+      `;
+    }
+
+    // VIDEO PAGE
+    if (page.type === "video") {
+      const displayName =
+        page.name ||
+        page.title ||
+        "Video";
+
+      const src =
+        page.src ||
+        page?.video?.src ||
+        page?.data?.src ||
+        page?.data?.video ||
+        "";
+
+      const srcLabel = src
+        ? `<div class="dg-journal-video-src">${src}</div>`
+        : "";
+
+      return `
+        <div class="dg-journal-video-wrapper">
+          <div class="dg-journal-video-info">
+            <span class="dg-journal-video-icon"><i class="fas fa-video"></i></span>
+            <span class="dg-journal-video-name">${displayName}</span>
+          </div>
+          ${srcLabel}
+          <button
+            class="dg-open-video"
+            data-journal-id="${journal.id}"
+            data-page-id="${page.id}"
+          >
+            OPEN VIDEO
+          </button>
+        </div>
+      `;
+    }
+
     // Anything else with text content
     if (page.text?.content) {
       const html = await this._enrich(page.text.content, journal);
@@ -323,6 +461,10 @@ export class JournalManager {
           ? "[IMAGE]"
           : page.type === "text"
           ? "[TEXT]"
+          : page.type === "pdf"
+          ? "[PDF]"
+          : page.type === "video"
+          ? "[VIDEO]"
           : "[CONTENT]";
       const bodyHtml = await this._buildPageBodyHtml(page, journal);
 
@@ -593,7 +735,9 @@ export class JournalManager {
     await journal.delete();
     ui.notifications.info(`Journal "${journal.name}" deleted.`);
 
-    if (DeltaGreenUI.loadJournals) DeltaGreenUI.loadJournals();
+    if (DeltaGreenUI.loadJournals) {
+      DeltaGreenUI.loadJournals();
+    }
   }
 
   /* ------------------------------------------------------------------ */

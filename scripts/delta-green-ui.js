@@ -1386,13 +1386,43 @@ static applyFont(fontKey) {
 
     // Use the same choices as the module setting
     const choices = buildCrtFontChoices();
+
     for (const [key, label] of Object.entries(choices)) {
       const opt = document.createElement("option");
       opt.value = key;
       opt.textContent = label;
+
+      // --------- FONT PREVIEW PER OPTION ----------
+      // Try to resolve the actual font-family the same way applyFont() does.
+      if (key) {
+        let family = key;
+
+        try {
+          const def = CONFIG?.fontDefinitions?.[key];
+          if (def && Array.isArray(def.fonts) && def.fonts.length > 0) {
+            const fam = def.fonts[0]?.family;
+            if (typeof fam === "string" && fam.trim()) {
+              family = fam.trim();
+            }
+          }
+        } catch (err) {
+          console.warn(
+            "Delta Green UI | Error resolving font family for CRT dropdown preview:",
+            err
+          );
+        }
+
+        // Make this option render in that font
+        opt.style.fontFamily = `'${family}', system-ui, monospace`;
+      }
+
       if (key === current) opt.selected = true;
       select.appendChild(opt);
     }
+
+    // Optional: keep the <select> itself in your UI font so the closed state
+    // still looks CRT-ish; the open dropdown uses per-option styles.
+    select.style.fontFamily = "var(--dg-crt-font-family, system-ui, monospace)";
 
     // Make sure the CSS variable matches current selection
     this.applyFont(current);

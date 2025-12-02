@@ -226,26 +226,32 @@ export class MailSystem {
         await this.rollWeaponAttack(id, { mode });
       });
 
-    // Right-click on a weapon button toggles SEMI/AUTO for firearms only
-    $(document)
-      .off("contextmenu.dgWeaponMode", ".dg-weapon-btn")
-      .on("contextmenu.dgWeaponMode", (ev) => {
-        ev.preventDefault();
-        const btn = ev.currentTarget;
+ // Right-click on a weapon button toggles SEMI/AUTO for firearms only
+$(document)
+  .off("contextmenu.dgWeaponMode", ".dg-weapon-btn")
+  .on("contextmenu.dgWeaponMode", ".dg-weapon-btn", (ev) => {
+    ev.preventDefault();
 
-        // If this button doesn't have a fire mode, it's melee/grenade/artillery → ignore
-        if (!btn.dataset.firemode) return;
+    // With delegated events, jQuery sets currentTarget to the matched element
+    const btn = ev.currentTarget;
 
-        const current = btn.dataset.firemode === "auto" ? "auto" : "semi";
-        const next = current === "auto" ? "semi" : "auto";
+    // If this button doesn't have a fire mode, it's melee/grenade/artillery → ignore
+    if (!btn.dataset.firemode) return;
 
-        btn.dataset.firemode = next;
+    const current = btn.dataset.firemode === "auto" ? "auto" : "semi";
+    const next = current === "auto" ? "semi" : "auto";
 
-        const modeTag = btn.querySelector(".dg-weapon-mode-tag");
-        if (modeTag) {
-          modeTag.textContent = next === "auto" ? "[AUTO]" : "[SEMI]";
-        }
-      });
+    btn.dataset.firemode = next;
+
+    const modeTag = btn.querySelector(".dg-weapon-mode-tag");
+    if (modeTag) {
+      modeTag.textContent = next === "auto" ? "[AUTO]" : "[SEMI]";
+    }
+
+    // Optional debug – uncomment if you want to see it in console
+    // console.log(`DG UI | Toggled ${btn.dataset.weaponName} to ${next.toUpperCase()}`);
+  });
+
 
     // SAN CHECK button in mail header (backup; ensureSanButton also wires it)
     $(document).off("click", "#dg-san-check-btn");
@@ -348,7 +354,7 @@ export class MailSystem {
       swim: "swim",
       unnatural: "unnatural",
       ritual: "rituals",
-      rituals: "ritruals",
+      rituals: "rituals",
     };
 
     if (!uiKey) return uiKey;
@@ -1481,14 +1487,17 @@ export class MailSystem {
             dmgRoll = new Roll(String(dmgFormula));
             await dmgRoll.evaluate();
 
-            // No separate damage chat card – we only show it inside the summary.
+            const baseDmg = Number(dmgRoll.total ?? 0) || 0;
+            const critDoubled = crit === "critSuccess";
+            const finalDmg = critDoubled ? baseDmg * 2 : baseDmg;
+
             dmgResultHtml = `
-              <div><b>DAMAGE:</b> ${dmgRoll.total} 
+              <div><b>DAMAGE:</b> ${finalDmg} 
                 <small>(${dmgRoll.formula}${
                   targetIsUnnatural && isLethalWeapon
                     ? "; Lethality ignored vs UNNATURAL target"
                     : ""
-                })</small>
+                }${critDoubled ? "; doubled for CRIT" : ""})</small>
               </div>
             `;
           } catch (e) {
@@ -1581,7 +1590,7 @@ export class MailSystem {
     }
   }
 
-   /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------ */
   /* SAN CHECK MACRO                                                          */
   /* ------------------------------------------------------------------------ */
 

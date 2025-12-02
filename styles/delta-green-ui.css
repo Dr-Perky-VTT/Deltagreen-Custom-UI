@@ -1180,13 +1180,94 @@
     max-height: calc(80vh - 70px);
 }
 .dg-journal-body img, .dg-journal-image-wrapper img, #dg-journal-window-body img, .dg-journal-main-thumb, .dg-journal-thumb {
-    width: 512px;
+    width: 768px;
     max-width: 100%;
     height: auto;
     display: block;
     margin: 8px auto;
     object-fit: contain;
 }
+/* ----------------------------------------------------------------------- */
+/* JOURNAL: PDF & VIDEO PAGE CARDS                                         */
+/* ----------------------------------------------------------------------- */
+
+.dg-journal-pdf-wrapper,
+.dg-journal-video-wrapper {
+  margin: 6px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--dg-color-border, var(--crt-border));
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 4px var(--crt-shadow, rgba(0, 0, 0, 0.8));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dg-color-text, var(--crt-text));
+}
+
+/* Top row: icon + name */
+.dg-journal-pdf-info,
+.dg-journal-video-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dg-journal-pdf-icon,
+.dg-journal-video-icon {
+  font-size: 12px;
+  opacity: 0.9;
+  color: var(--dg-color-accent, var(--crt-highlight));
+}
+
+/* File name text */
+.dg-journal-pdf-name,
+.dg-journal-video-name {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dg-color-text, var(--crt-text));
+}
+
+/* Optional debug/source line (URL or file path) */
+.dg-journal-pdf-src,
+.dg-journal-video-src {
+  font-size: 9px;
+  opacity: 0.7;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+/* Buttons: OPEN PDF / OPEN VIDEO */
+.dg-open-pdf,
+.dg-open-video {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 0;
+  border: 1px solid var(--dg-color-border, var(--crt-border));
+  background: transparent;
+  color: var(--dg-color-accent, var(--crt-highlight));
+  cursor: pointer;
+}
+
+.dg-open-pdf:hover,
+.dg-open-video:hover {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 4px var(--crt-highlight, var(--dg-color-accent));
+}
+
+/* Dim when the page accordion is collapsed */
+.dg-journal-page-header + .dg-journal-page-body:not(:visible)
+  .dg-journal-pdf-wrapper,
+.dg-journal-page-header + .dg-journal-page-body:not(:visible)
+  .dg-journal-video-wrapper {
+  opacity: 0.7;
+}
+
 /* ========================================================================== */
 /* HP/WP & SAN STATUS BOXES */
 /* ========================================================================== */
@@ -1317,7 +1398,14 @@
     padding: 3px 8px;
     cursor: pointer;
 }
-
+.dg-ui-dialog .window-content label,
+.dg-ui-dialog .window-content input,
+.dg-ui-dialog .window-content select,
+.dg-ui-dialog .window-content textarea,
+.dg-ui-dialog .window-content fieldset,
+.dg-ui-dialog .window-content legend {
+  color: var(--dg-crt-text) !important;
+}
 /* ========================================================================== */
 /* CUSTOM ROLL RESULT LOOK */
 /* ========================================================================== */
@@ -3262,4 +3350,9 @@ body.dg-crt-on {
   font-family: var(--dg-crt-font-family, monospace);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+/* Hide underlying file paths for PDF/VIDEO journal pages */
+.dg-journal-pdf-src,
+.dg-journal-video-src {
+  display: none !important;
 }
