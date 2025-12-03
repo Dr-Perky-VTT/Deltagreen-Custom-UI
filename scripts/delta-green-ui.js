@@ -298,6 +298,29 @@ export class DeltaGreenUI {
     return `${mm}/${dd}/${yy} ${hh}:${mi}:${ss}`;
   }
 
+  // Fallback numeric stat helper (kept for safety, but handler view uses statistic.* directly)
+  static _getNumericStat(actor, statKey) {
+    if (!actor) return null;
+
+    const sys = actor.system ?? actor.data?.data ?? {};
+    const paths = [
+      `stats.${statKey}.value`,
+      `stats.${statKey}`,
+      `characteristics.${statKey}.value`,
+      `characteristics.${statKey}`,
+      `attributes.${statKey}.value`,
+      `attributes.${statKey}`,
+      statKey // last-ditch: system.str, system.dex, etc.
+    ];
+
+    for (const path of paths) {
+      const v = foundry.utils.getProperty(sys, path);
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+    }
+
+    return null;
+  }
+
   // Map numeric track → vague descriptor + level
   static _statusDescriptor(kind, value, max) {
     if (value == null || max == null || max <= 0) {
@@ -1076,6 +1099,15 @@ export class DeltaGreenUI {
       // Actor HUD updates (top bar + hotbar) go through MailSystem, debounced
       if (actor && MailSystem && typeof MailSystem._scheduleActorRefresh === "function") {
         MailSystem._scheduleActorRefresh(actor);
+      } else {
+        // Fallback if MailSystem is missing or old
+        this.updateTopStatusBar();
+        this.refreshBottomHotbar();
+      }
+
+      // NEW: refresh handler dashboard if it's open
+      if (this.currentView === "handler") {
+        this.loadHandlerView();
       }
     });
 
@@ -1214,71 +1246,75 @@ export class DeltaGreenUI {
   }
 
   /**
-   * Hide certain tabs/views for non-GM users based on GM settings.
-   * GM always sees all tabs.
+   * Hide Banking / Time / Handler tabs when disabled.
+   * Banking/Time controlled by settings, Handler is GM-only.
    */
-/**
- * Hide Banking / Time tabs for everyone when disabled.
- * GM still controls the setting, but the visibility applies to GM and players.
- */
-/**
- * Hide Banking / Time tabs when disabled.
- * Visibility rules apply equally to GM and players.
- */
-static applyTabVisibility() {
-  try {
-    const bankingEnabled = game.settings.get(this.ID, "enableBankingTab") !== false;
-    const timeEnabled    = game.settings.get(this.ID, "enableTimeTab")    !== false;
+  static applyTabVisibility() {
+    try {
+      const bankingEnabled = game.settings.get(this.ID, "enableBankingTab") !== false;
+      const timeEnabled    = game.settings.get(this.ID, "enableTimeTab")    !== false;
 
-    const $bankingMenu = $('.dg-menu-item[data-view="banking"]');
-    const $bankingView = $('#dg-view-banking');
+      const $bankingMenu = $('.dg-menu-item[data-view="banking"]');
+      const $bankingView = $('#dg-view-banking');
 
-    const $timeMenu = $('.dg-menu-item[data-view="time"]');
-    const $timeView = $('#dg-view-time');
+      const $timeMenu = $('.dg-menu-item[data-view="time"]');
+      const $timeView = $('#dg-view-time');
 
-    // ---------------- BANKING ----------------
-    if (bankingEnabled) {
-      // Show the menu item; let CSS + .active control the panel visibility
-      $bankingMenu.show();
-      // Clear any inline display override from previous .hide() calls
-      $bankingView.css("display", "");
-    } else {
-      $bankingMenu.hide();
-      // Hide the panel and make sure it can't be the active view
-      $bankingView.hide().removeClass("active");
-      if (this.currentView === "banking") {
-        this.currentView = null;
+      const $handlerMenu = $('.dg-menu-item[data-view="handler"]');
+      const $handlerView = $('#dg-view-handler');
+
+      // ---------------- BANKING ----------------
+      if (bankingEnabled) {
+        $bankingMenu.show();
+        $bankingView.css("display", "");
+      } else {
+        $bankingMenu.hide();
+        $bankingView.hide().removeClass("active");
+        if (this.currentView === "banking") {
+          this.currentView = null;
+        }
       }
-    }
 
-    // ---------------- TIME -------------------
-    if (timeEnabled) {
-      $timeMenu.show();
-      $timeView.css("display", "");
-    } else {
-      $timeMenu.hide();
-      $timeView.hide().removeClass("active");
-      if (this.currentView === "time") {
-        this.currentView = null;
+      // ---------------- TIME -------------------
+      if (timeEnabled) {
+        $timeMenu.show();
+        $timeView.css("display", "");
+      } else {
+        $timeMenu.hide();
+        $timeView.hide().removeClass("active");
+        if (this.currentView === "time") {
+          this.currentView = null;
+        }
       }
-    }
 
-    // If whatever was open just got disabled, close the dropdown cleanly
-    const $content = $("#dg-crt-content");
-    if (!this.currentView && $content.hasClass("dg-open")) {
-      $("#dg-crt-menu .dg-menu-item").removeClass("active");
-      $(".dg-view").removeClass("active");
-      $content
-        .removeClass("dg-open")
-        .slideUp(150, () => this.adjustDropdownHeight());
-    } else {
-      // Otherwise just re-measure in case visible content changed
-      this.adjustDropdownHeight();
+      // ---------------- HANDLER (GM-only) ----------------
+      if (game.user.isGM) {
+        $handlerMenu.show();
+        $handlerView.css("display", "");
+      } else {
+        $handlerMenu.hide();
+        $handlerView.hide().removeClass("active");
+        if (this.currentView === "handler") {
+          this.currentView = null;
+        }
+      }
+
+      // If whatever was open just got disabled, close the dropdown cleanly
+      const $content = $("#dg-crt-content");
+      if (!this.currentView && $content.hasClass("dg-open")) {
+        $("#dg-crt-menu .dg-menu-item").removeClass("active");
+        $(".dg-view").removeClass("active");
+        $content
+          .removeClass("dg-open")
+          .slideUp(150, () => this.adjustDropdownHeight());
+      } else {
+        // Otherwise just re-measure in case visible content changed
+        this.adjustDropdownHeight();
+      }
+    } catch (err) {
+      console.error("Delta Green UI | applyTabVisibility error", err);
     }
-  } catch (err) {
-    console.error("Delta Green UI | applyTabVisibility error", err);
   }
-}
 
   /* -------------------------------- Theme --------------------------------- */
 
@@ -1305,50 +1341,50 @@ static applyTabVisibility() {
     this.updateDynamicElements();
   }
 
-static applyFont(fontKey) {
-  try {
-    const root = document.documentElement;
-    if (!root) return;
+  static applyFont(fontKey) {
+    try {
+      const root = document.documentElement;
+      if (!root) return;
 
-    const key = (fontKey || "").trim();
-    const container = document.getElementById("dg-crt-container");
+      const key = (fontKey || "").trim();
+      const container = document.getElementById("dg-crt-container");
 
-    // Empty -> use CSS default (your DG fallback in CSS)
-    if (!key) {
-      root.style.removeProperty("--dg-crt-font-family");
-      if (container) container.classList.remove("dg-crt-font-custom");
-    } else {
-      let family = key;
+      // Empty -> use CSS default (your DG fallback in CSS)
+      if (!key) {
+        root.style.removeProperty("--dg-crt-font-family");
+        if (container) container.classList.remove("dg-crt-font-custom");
+      } else {
+        let family = key;
 
-      // If this key exists in CONFIG.fontDefinitions, prefer its "family"
-      try {
-        const def = CONFIG?.fontDefinitions?.[key];
-        if (def && Array.isArray(def.fonts) && def.fonts.length > 0) {
-          const first = def.fonts[0];
-          if (first?.family) {
-            family = first.family;
+        // If this key exists in CONFIG.fontDefinitions, prefer its "family"
+        try {
+          const def = CONFIG?.fontDefinitions?.[key];
+          if (def && Array.isArray(def.fonts) && def.fonts.length > 0) {
+            const first = def.fonts[0];
+            if (first?.family) {
+              family = first.family;
+            }
           }
+        } catch (err) {
+          console.warn(
+            "Delta Green UI | Error resolving font family from CONFIG.fontDefinitions:",
+            err
+          );
         }
-      } catch (err) {
-        console.warn(
-          "Delta Green UI | Error resolving font family from CONFIG.fontDefinitions:",
-          err
-        );
+
+        // Final CSS stack: chosen family → system UI → monospace
+        const cssVal = `'${family}', system-ui, monospace`;
+        root.style.setProperty("--dg-crt-font-family", cssVal);
+        if (container) container.classList.add("dg-crt-font-custom");
       }
 
-      // Final CSS stack: chosen family → system UI → monospace
-      const cssVal = `'${family}', system-ui, monospace`;
-      root.style.setProperty("--dg-crt-font-family", cssVal);
-      if (container) container.classList.add("dg-crt-font-custom");
+      // Keep CRT dropdown in sync if it's present
+      const select = document.getElementById("dg-font-select");
+      if (select) select.value = key;
+    } catch (e) {
+      console.error("Delta Green UI | Error applying CRT font:", e);
     }
-
-    // Keep CRT dropdown in sync if it's present
-    const select = document.getElementById("dg-font-select");
-    if (select) select.value = key;
-  } catch (e) {
-    console.error("Delta Green UI | Error applying CRT font:", e);
   }
-}
 
   static applyScanlineIntensity(value) {
     try {
@@ -1857,7 +1893,6 @@ static applyFont(fontKey) {
         }
       }
 
-      // --- views that live inside the dropdown panel ---
       const $content = $("#dg-crt-content");
       const $this = $(this);
 
@@ -1914,6 +1949,7 @@ static applyFont(fontKey) {
       if (view === "psyche")    PsycheManager.refresh();
       if (view === "banking")   BankingManager.refresh();
       if (view === "time")      TimeManager.refresh?.();
+      if (view === "handler")   DeltaGreenUI.loadHandlerView();
 
       // Let layout settle then re-adjust height to content
       setTimeout(() => DeltaGreenUI.adjustDropdownHeight(), 100);
@@ -2034,6 +2070,179 @@ static applyFont(fontKey) {
       $list.append(
         '<li class="dg-result-item dg-no-entries">No active players found</li>'
       );
+    }
+  }
+
+  /**
+   * HANDLER VIEW
+   * GM-only per-player dashboard: stats + HP/WP/SAN/BP for all active agents.
+   */
+  static loadHandlerView() {
+    this.loadHandlerOverview();
+  }
+
+  static loadHandlerOverview() {
+    const tbody = document.getElementById("dg-handler-table-body");
+    const empty = document.getElementById("dg-handler-empty");
+    const table = document.getElementById("dg-handler-table");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    const showEmpty = (message) => {
+      if (empty) {
+        empty.style.display = "block";
+        if (message) empty.textContent = message;
+      }
+      if (table) table.style.display = "none";
+    };
+
+    const showTable = () => {
+      if (empty) empty.style.display = "none";
+      if (table) table.style.display = "";
+    };
+
+    // GM gate
+    if (!game.user.isGM) {
+      showEmpty("HANDLER VIEW – GM ONLY");
+      return;
+    }
+
+    const users = game.users.filter((u) => u.active && !u.isGM);
+
+    if (!users.length) {
+      showEmpty("NO ACTIVE AGENTS");
+      return;
+    }
+
+    showTable();
+
+    // Prefer system config, fall back to hard-coded list
+    let statKeys = ["str", "con", "dex", "int", "pow", "cha"];
+    try {
+      const cfg =
+        (CONFIG?.DG && Array.isArray(CONFIG.DG.statistics) && CONFIG.DG.statistics.length
+          ? CONFIG.DG.statistics
+          : game.system?.config?.DG &&
+            Array.isArray(game.system.config.DG.statistics) &&
+            game.system.config.DG.statistics.length
+          ? game.system.config.DG.statistics
+          : null);
+
+      if (cfg && cfg.length) statKeys = cfg;
+    } catch (_e) {
+      // ignore and keep defaults
+    }
+
+    for (const user of users) {
+      const actor = user.character;
+      const row = document.createElement("tr");
+
+      // PLAYER
+      const playerCell = document.createElement("td");
+      playerCell.textContent = user.name;
+      row.appendChild(playerCell);
+
+      // AGENT
+      const agentCell = document.createElement("td");
+      agentCell.textContent = actor ? actor.name : "NO AGENT ASSIGNED";
+      row.appendChild(agentCell);
+
+      // If no actor: pad out 6 stats + HP/WP/SAN/BP = 11 more cells
+      if (!actor) {
+        for (let i = 0; i < 11; i++) {
+          const c = document.createElement("td");
+          c.textContent = "—";
+          row.appendChild(c);
+        }
+        tbody.appendChild(row);
+        continue;
+      }
+
+      // --- CORE STATS from system.statistic.<key>.value -------------------
+      const statsObj =
+        actor.system?.statistic ??
+        actor.system?.statistics ??
+        null;
+
+      for (const key of statKeys) {
+        const cell = document.createElement("td");
+        let value = null;
+
+        if (statsObj && typeof statsObj === "object") {
+          const node =
+            statsObj[key] ??
+            statsObj[key.toUpperCase()] ??
+            statsObj[key.toLowerCase()];
+
+          if (node != null) {
+            if (typeof node === "number") {
+              value = node;
+            } else if (typeof node.value === "number") {
+              value = node.value;
+            } else if (typeof node.score === "number") {
+              value = node.score;
+            }
+          }
+        }
+
+        cell.textContent = value != null ? String(value) : "—";
+        row.appendChild(cell);
+      }
+
+      // --- HP / WP / SAN / BP --------------------------------------------
+      const hpCurrent = Number(
+        foundry.utils.getProperty(actor, "system.hp.value") ??
+        foundry.utils.getProperty(actor, "system.health.value") ??
+        0
+      );
+      const hpMax = Number(
+        foundry.utils.getProperty(actor, "system.hp.max") ??
+        foundry.utils.getProperty(actor, "system.health.max") ??
+        foundry.utils.getProperty(actor, "system.hp.value") ??
+        0
+      );
+
+      const wpCurrent = Number(
+        foundry.utils.getProperty(actor, "system.wp.value") ?? 0
+      );
+      const wpMax = Number(
+        foundry.utils.getProperty(actor, "system.wp.max") ??
+        foundry.utils.getProperty(actor, "system.wp.value") ??
+        0
+      );
+
+      const sanCurrent = Number(
+        foundry.utils.getProperty(actor, "system.sanity.value") ?? 0
+      );
+      const sanMax = Number(
+        foundry.utils.getProperty(actor, "system.sanity.max") ?? 99
+      );
+
+      const bp = Number(
+        foundry.utils.getProperty(actor, "system.sanity.currentBreakingPoint") ??
+        foundry.utils.getProperty(actor, "system.sanity.breakingPoint") ??
+        NaN
+      );
+
+      const hpCell = document.createElement("td");
+      hpCell.textContent = hpMax ? `${hpCurrent}/${hpMax}` : String(hpCurrent);
+      row.appendChild(hpCell);
+
+      const wpCell = document.createElement("td");
+      wpCell.textContent = wpMax ? `${wpCurrent}/${wpMax}` : String(wpCurrent);
+      row.appendChild(wpCell);
+
+      const sanCell = document.createElement("td");
+      sanCell.textContent = sanMax ? `${sanCurrent}/${sanMax}` : String(sanCurrent);
+      row.appendChild(sanCell);
+
+      const bpCell = document.createElement("td");
+      bpCell.textContent =
+        Number.isFinite(bp) && bp > 0 ? String(bp) : "—";
+      row.appendChild(bpCell);
+
+      tbody.appendChild(row);
     }
   }
 
@@ -2208,7 +2417,7 @@ static applyFont(fontKey) {
             .text()
             .trim()
             .toUpperCase();
-          return title === "LAST ENTRIES";
+          return title === "LAST RECORD ENTRIES" || title === "LAST ENTRIES";
         });
 
         if (!$section.length) {
@@ -2885,7 +3094,6 @@ static applyFont(fontKey) {
     setTimeout(() => {
       this.loadLastEntries();
       this.forceDisplayLastEntries();
-      // Actor HUD (status bar + hotbar) is now handled by MailSystem._scheduleActorRefresh
     }, 500);
   }
 
