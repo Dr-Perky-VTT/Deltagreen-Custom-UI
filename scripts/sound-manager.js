@@ -63,7 +63,6 @@ export const WEAPON_SOUND_GROUPS = {
     weapons: ["Large sword / Two-handed sword"]
   },
 
-
   // ---------------------------------------------------------------------------
   // LESS-LETHAL: PEPPER SPRAY / TEAR GAS
   // ---------------------------------------------------------------------------
@@ -322,6 +321,7 @@ for (const groupId of Object.keys(WEAPON_SOUND_GROUPS)) {
     WEAPON_NAME_TO_GROUP_KEY[wName] = group.key;
   }
 }
+
 // Map group key -> isFirearm (we treat FIREARM_* groups as small arms)
 const GROUP_KEY_IS_FIREARM = {};
 for (const groupId of Object.keys(WEAPON_SOUND_GROUPS)) {
@@ -329,6 +329,7 @@ for (const groupId of Object.keys(WEAPON_SOUND_GROUPS)) {
   const isFirearm = groupId.startsWith("FIREARM_");
   GROUP_KEY_IS_FIREARM[group.key] = isFirearm;
 }
+
 /**
  * WeaponSoundManager:
  *  - registers 4 sound slots per group (semi, semiSupp, auto, autoSupp)
@@ -338,6 +339,10 @@ for (const groupId of Object.keys(WEAPON_SOUND_GROUPS)) {
 export class WeaponSoundManager {
   // Make sure we don't wire the hook twice
   static _collapseHooked = false;
+
+  /* ------------------------------------------------------------------------ */
+  /* SETTINGS REGISTRATION                                                    */
+  /* ------------------------------------------------------------------------ */
 
   /**
    * Call once during module init.
@@ -349,36 +354,6 @@ export class WeaponSoundManager {
    *   weaponSound_<groupKey>_auto
    *   weaponSound_<groupKey>_autoSupp
    */
-   // Inside WeaponSoundManager
-static _resolveSoundPath(settingKey, defaultPath = null) {
-  const MODULE_ID = DeltaGreenUI.ID || "deltagreen-custom-ui";
-  const fullKey = `${MODULE_ID}.${settingKey}`;
-
-  try {
-    // If this specific sound setting was never registered,
-    // just use the default path and do NOT call game.settings.get.
-    const registry = game.settings?.settings;
-    if (!registry || !registry.has(fullKey)) {
-      // Optional: debug-only log
-      // console.debug(`DG UI | Weapon sound setting not registered: ${fullKey} (using default)`);
-      return defaultPath;
-    }
-
-    const value = game.settings.get(MODULE_ID, settingKey);
-    if (typeof value === "string" && value.trim().length) {
-      return value.trim();
-    }
-
-    return defaultPath;
-  } catch (err) {
-    console.warn(
-      `Delta Green UI | WeaponSoundManager._resolveSoundPath failed for ${fullKey}, using default.`,
-      err
-    );
-    return defaultPath;
-  }
-}
-
   static registerSettings() {
     const moduleId = "deltagreen-custom-ui";
 
@@ -456,10 +431,10 @@ static _resolveSoundPath(settingKey, defaultPath = null) {
     this._wireSettingsCollapsingHook();
   }
 
-  /**
-   * Hook the settings sheet so we can collapse weapon SFX variants.
-   * Works on both old (renderSettingsConfig) and new (renderClientSettings) names.
-   */
+  /* ------------------------------------------------------------------------ */
+  /* SETTINGS UI COLLAPSING                                                   */
+  /* ------------------------------------------------------------------------ */
+
   /**
    * Hook the Settings windows so we can collapse weapon SFX variants.
    * Called once from registerSettings().
@@ -604,9 +579,10 @@ static _resolveSoundPath(settingKey, defaultPath = null) {
       label.appendChild(toggle);
     }
   }
-// ---------------------------------------------------------------------------
-  // SOUND RESOLUTION + SUPPRESSOR LOGIC
-  // ---------------------------------------------------------------------------
+
+  /* ------------------------------------------------------------------------ */
+  /* SOUND RESOLUTION + PLAY                                                  */
+  /* ------------------------------------------------------------------------ */
 
   static play({ actor = null, weapon = null, mode = "semi" } = {}) {
     if (!weapon) return;
@@ -632,6 +608,37 @@ static _resolveSoundPath(settingKey, defaultPath = null) {
     }
   }
 
+  /**
+   * Safely get a string setting, returning "" if not registered / empty.
+   */
+  static _safeGetSetting(moduleId, key) {
+    try {
+      const fullKey = `${moduleId}.${key}`;
+      const registry = game.settings?.settings;
+      if (!registry || !registry.has(fullKey)) return "";
+
+      const value = game.settings.get(moduleId, key);
+      if (typeof value === "string" && value.trim().length) {
+        return value.trim();
+      }
+      return "";
+    } catch (err) {
+      console.warn(
+        "Delta Green UI | WeaponSoundManager._safeGetSetting failed:",
+        moduleId,
+        key,
+        err
+      );
+      return "";
+    }
+  }
+
+  /**
+   * Resolve the correct sound file for this attack:
+   *  - Non-firearms: single sound per group.
+   *  - Firearms: semi / auto variants, plus suppressed versions.
+   *    Uses `mode` from MailSystem ( "semi" or "auto" ).
+   */
   static _resolveSoundPath({ actor, weapon, mode }) {
     const moduleId = "deltagreen-custom-ui";
     const name = weapon?.name || "";
@@ -644,17 +651,13 @@ static _resolveSoundPath(settingKey, defaultPath = null) {
     // ---------- NON-FIREARMS: single sound ----------
     if (!isFirearm) {
       const singleKey = `weaponSound_${groupKey}`;
-      const singlePath = game.settings.get(moduleId, singleKey);
-      if (singlePath && typeof singlePath === "string" && singlePath.trim().length) {
-        return singlePath.trim();
-      }
+      const singlePath = this._safeGetSetting(moduleId, singleKey);
+      if (singlePath) return singlePath;
 
       // Backward compat: old *_semi setting
       const legacyKey = `weaponSound_${groupKey}_semi`;
-      const legacyPath = game.settings.get(moduleId, legacyKey);
-      if (legacyPath && typeof legacyPath === "string" && legacyPath.trim().length) {
-        return legacyPath.trim();
-      }
+      const legacyPath = this._safeGetSetting(moduleId, legacyKey);
+      if (legacyPath) return legacyPath;
 
       return null;
     }
@@ -662,14 +665,17 @@ static _resolveSoundPath(settingKey, defaultPath = null) {
     // ---------- FIREARMS: semi / auto + suppressed variants ----------
     const suppressed = this._isSuppressed(actor, weapon);
 
+    const normalizedMode = mode === "auto" ? "auto" : "semi";
+
     let variant =
-      mode === "auto"
+      normalizedMode === "auto"
         ? (suppressed ? "autoSupp" : "auto")
         : (suppressed ? "semiSupp" : "semi");
 
     const mkKey = (suffix) => `weaponSound_${groupKey}_${suffix}`;
     const candidates = [variant];
 
+    // Fallback chain so you still get *something* if some fields are blank
     if (variant === "autoSupp") {
       candidates.push("auto", "semiSupp", "semi");
     } else if (variant === "auto") {
@@ -679,14 +685,16 @@ static _resolveSoundPath(settingKey, defaultPath = null) {
     }
 
     for (const suf of candidates) {
-      const path = game.settings.get(moduleId, mkKey(suf));
-      if (path && typeof path === "string" && path.trim().length) {
-        return path.trim();
-      }
+      const path = this._safeGetSetting(moduleId, mkKey(suf));
+      if (path) return path;
     }
 
     return null;
   }
+
+  /* ------------------------------------------------------------------------ */
+  /* HELPERS                                                                  */
+  /* ------------------------------------------------------------------------ */
 
   static isFirearmWeapon(weapon) {
     if (!weapon) return false;

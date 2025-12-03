@@ -724,7 +724,8 @@ export class PsycheManager {
         }
       },
       default: "cancel"
-    }).render(true);
+    },{
+	classes: ["dg-ui-dialog"]}).render(true);
   }
 
   /* ----------------------------------------------------------------------- */
@@ -983,7 +984,8 @@ export class PsycheManager {
             }
           },
           default: "ok"
-        }).render(true);
+        },{
+	classes: ["dg-ui-dialog"]}).render(true);
       });
 
       if (!projData) return;
@@ -1145,7 +1147,7 @@ export class PsycheManager {
           title: `Repress Insanity – ${displayName}`,
           content: `
             <div style="display:flex;flex-direction:column;gap:8px;">
-              <p style="font-size:13px;opacity:0.95%;">
+              <p style>
                 Spend <b>1D4 WP</b> to lean on a Bond. If you have at least 1 WP left after spending,
                 reduce that Bond by the same amount and you may roll a SAN test to repress the episode.
               </p>
@@ -1172,7 +1174,8 @@ export class PsycheManager {
             }
           },
           default: "ok"
-        }).render(true);
+        },{
+	classes: ["dg-ui-dialog", "dg-time-log-dialog"]}).render(true);
       });
 
       if (!dialogData) return;
@@ -1489,7 +1492,8 @@ static async runSanCheckDialogMacro() {
           cancel: { label: "Cancel", callback: () => resolve(null) }
         },
         default: "ok"
-      }).render(true);
+      },{
+	classes: ["dg-ui-dialog"]}).render(true);
     });
 
     if (!sanDialog) return;
@@ -1750,7 +1754,8 @@ static async runSanCheckDialogMacro() {
           }
         },
         default: "next"
-      }).render(true);
+      },{
+	classes: ["dg-ui-dialog"]}).render(true);
     });
 
     if (!step1Data || !step1Data.pursuit) return;
@@ -1917,7 +1922,8 @@ static async runSanCheckDialogMacro() {
           }
         },
         default: "run"
-      }).render(true);
+      },{
+	classes: ["dg-ui-dialog"]}).render(true);
     });
 
     if (!step2Data) return;

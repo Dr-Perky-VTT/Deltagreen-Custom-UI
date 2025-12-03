@@ -221,31 +221,37 @@ export class MailSystem {
         if (!id) return;
 
         // Read the current mode from the button
-        const mode = btn.dataset.fireMode === "auto" ? "auto" : "semi";
+        const mode = btn.dataset.firemode === "auto" ? "auto" : "semi";
 
         await this.rollWeaponAttack(id, { mode });
       });
 
-    // Right-click on a weapon button toggles SEMI/AUTO for firearms only
-    $(document)
-      .off("contextmenu.dgWeaponMode", ".dg-weapon-btn")
-      .on("contextmenu.dgWeaponMode", ".dg-weapon-btn", (ev) => {
-        ev.preventDefault();
-        const btn = ev.currentTarget;
+ // Right-click on a weapon button toggles SEMI/AUTO for firearms only
+$(document)
+  .off("contextmenu.dgWeaponMode", ".dg-weapon-btn")
+  .on("contextmenu.dgWeaponMode", ".dg-weapon-btn", (ev) => {
+    ev.preventDefault();
 
-        // If this button doesn't have a fire mode, it's melee/grenade/artillery → ignore
-        if (!btn.dataset.fireMode) return;
+    // With delegated events, jQuery sets currentTarget to the matched element
+    const btn = ev.currentTarget;
 
-        const current = btn.dataset.fireMode === "auto" ? "auto" : "semi";
-        const next = current === "auto" ? "semi" : "auto";
+    // If this button doesn't have a fire mode, it's melee/grenade/artillery → ignore
+    if (!btn.dataset.firemode) return;
 
-        btn.dataset.fireMode = next;
+    const current = btn.dataset.firemode === "auto" ? "auto" : "semi";
+    const next = current === "auto" ? "semi" : "auto";
 
-        const modeTag = btn.querySelector(".dg-weapon-mode-tag");
-        if (modeTag) {
-          modeTag.textContent = next === "auto" ? "[AUTO]" : "[SEMI]";
-        }
-      });
+    btn.dataset.firemode = next;
+
+    const modeTag = btn.querySelector(".dg-weapon-mode-tag");
+    if (modeTag) {
+      modeTag.textContent = next === "auto" ? "[AUTO]" : "[SEMI]";
+    }
+
+    // Optional debug – uncomment if you want to see it in console
+    // console.log(`DG UI | Toggled ${btn.dataset.weaponName} to ${next.toUpperCase()}`);
+  });
+
 
     // SAN CHECK button in mail header (backup; ensureSanButton also wires it)
     $(document).off("click", "#dg-san-check-btn");
@@ -657,7 +663,12 @@ export class MailSystem {
         statsRoot[key.toLowerCase?.()] ||
         statsRoot[key.toUpperCase?.()];
 
-      const rawVal = statObj?.value ?? statObj?.score ?? statObj;
+      const rawVal =
+        statObj?.x5 ??
+        statObj?.value ??
+        statObj?.score ??
+        statObj;
+
       const val = Number(rawVal);
 
       if (!statObj || Number.isNaN(val)) {
@@ -677,8 +688,10 @@ export class MailSystem {
 
       if (showNums) {
         let percent = val;
-        if (val <= 20) {
-          percent = val * 5;
+
+        // If it's clearly a base stat (<= 20) and not already x5, convert.
+        if (percent <= 20 && statObj?.x5 == null) {
+          percent = percent * 5;
         }
 
         if (percent < 0) percent = 0;
@@ -1009,7 +1022,7 @@ export class MailSystem {
           <button class="dg-button dg-weapon-btn"
                   data-weapon-id="${w.id}"
                   data-weapon-name="${upperName}"
-                  data-fire-mode="semi">
+                  data-firemode="semi">
             <span class="dg-weapon-label">
               ${upperName}
             </span>
@@ -1171,6 +1184,9 @@ export class MailSystem {
 
   /**
    * Weapon attack:
+   *  - Single chat message only (no extra roll/damage cards)
+   *  - Still shows 3D dice if Dice So Nice is active
+   *  - Announces when a skill gets marked ☣ inside the same block
    */
   static async rollWeaponAttack(itemId, { mode = null } = {}) {
     try {
@@ -1190,7 +1206,7 @@ export class MailSystem {
 
       const sys = item.system || {};
 
-      // ---------------- LETHALITY SETUP ----------------
+      /* --------------------------- LETHALITY SETUP --------------------------- */
       const isLethalWeapon = !!sys.isLethal;
       let lethalityRating = 0;
 
@@ -1238,55 +1254,137 @@ export class MailSystem {
               },
             },
             default: "ok",
-          }).render(true);
+          }, { classes: ["dg-ui-dialog"] }).render(true);
         });
 
         if (!dialogData) return;
         targetIsUnnatural = !!dialogData.unnatural;
       }
 
-      // ---------------- SKILL / TARGET SETUP ----------------
-      const linkedKey =
-        sys.skillKey || sys.skill || sys.linkedSkill || "firearms";
-      const systemKey = this._mapSkillKey(linkedKey);
+      /* ------------------------ SKILL / STAT SETUP -------------------------- */
+      const linkedRawKey =
+        sys.skillKey || sys.skill || sys.linkedSkill || sys.skillStat || "firearms";
+
+      // Strip "*5", " x5", etc. from things like "DEX*5"
+      let normalizedKey = String(linkedRawKey).trim();
+      normalizedKey = normalizedKey.replace(/\s*x?\*?\s*5\b/gi, "");
+      normalizedKey = normalizedKey || "firearms";
+
+      const lowerKey = normalizedKey.toLowerCase();
+
+      const statsRoot =
+        actor.system?.stats ||
+        actor.system?.statistics ||
+        actor.system?.characteristics ||
+        actor.system?.attributes ||
+        {};
 
       const skills = actor.system?.skills || {};
       const typed = actor.system?.typedSkills || {};
-      const skillObj = skills[systemKey] || typed[systemKey];
 
-      const baseTarget = Number(skillObj?.proficiency ?? 0) || 0;
+      const coreStatKeys = ["str", "con", "dex", "int", "pow", "cha", "siz", "app"];
+      const isLuckStat = lowerKey === "luck";
+      const isCoreStat = coreStatKeys.includes(lowerKey) || isLuckStat;
+
+      let baseTarget = 0;
+      let usesStatX5 = false;
+      let systemKeyForFlags = normalizedKey; // what we store in flags
+
+      if (isCoreStat) {
+        // ALWAYS treat these as stats, not skills – EVEN FOR WEAPONS
+        usesStatX5 = true;
+
+        if (isLuckStat) {
+          baseTarget = 50;
+          systemKeyForFlags = "LUCK";
+        } else {
+          const statObj =
+            statsRoot[normalizedKey] ||
+            statsRoot[lowerKey] ||
+            statsRoot[normalizedKey.toUpperCase()] ||
+            statsRoot[lowerKey.toUpperCase?.()];
+
+          let raw =
+            Number(
+              statObj?.x5 ??
+              statObj?.value ??
+              statObj?.score ??
+              statObj
+            ) || 0;
+
+          // If x5 not present and this looks like a base stat (≤ 20), convert to x5
+          if (statObj && statObj.x5 == null && raw > 0 && raw <= 20) {
+            raw = raw * 5;
+          }
+
+          baseTarget = raw;
+          systemKeyForFlags = lowerKey.toUpperCase();
+        }
+      } else {
+        // Not a core stat: treat as a SKILL first
+        const skillKey = this._mapSkillKey(normalizedKey);
+        let skillObj = skills[skillKey] || typed[skillKey];
+
+        if (skillObj) {
+          baseTarget = Number(skillObj.proficiency ?? 0) || 0;
+          systemKeyForFlags = skillKey;
+        } else {
+          // Last-resort: weird stat hiding in statsRoot
+          const statObj =
+            statsRoot[skillKey] ||
+            statsRoot[skillKey.toLowerCase?.()] ||
+            statsRoot[skillKey.toUpperCase?.()];
+
+          if (statObj) {
+            usesStatX5 = true;
+            let raw =
+              Number(
+                statObj.x5 ??
+                statObj.value ??
+                statObj.score ??
+                statObj
+              ) || 0;
+
+            if (statObj.x5 == null && raw > 0 && raw <= 20) {
+              raw = raw * 5;
+            }
+
+            baseTarget = raw;
+            systemKeyForFlags = skillKey.toUpperCase();
+          } else {
+            // Unknown key: treat as 0% and DO NOT mark a real skill
+            baseTarget = 0;
+            systemKeyForFlags = skillKey;
+          }
+        }
+      }
+
       const mod = Number(this.currentModifier || 0);
       const target = Math.max(0, baseTarget + mod);
 
-      // ---------------- ATTACK ROLL ----------------
+      /* ---------------------------- ATTACK ROLL ----------------------------- */
       const attackRoll = new Roll("1d100");
       await attackRoll.evaluate();
       const total = Number(attackRoll.total ?? 0);
 
+      // Still show 3D dice, but no separate chat card
+      if (game.dice3d) {
+        try {
+          await game.dice3d.showForRoll(attackRoll, game.user, true);
+        } catch (e) {
+          console.warn("Delta Green UI | Dice3D showForRoll failed:", e);
+        }
+      }
+
       const { outcome, crit } = this._dgOutcome(total, target);
-      const marked = outcome === "failure" || crit === "critFailure";
 
-      const attackFlavor = `ATTACK: ${(item.name || "WEAPON").toUpperCase()}`;
-      await attackRoll.toMessage({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        flavor: attackFlavor,
-        flags: {
-          [DeltaGreenUI.ID]: {
-            weaponAttack: true,
-            itemId,
-            systemKey,
-            baseTarget,
-            modifier: mod,
-            target,
-            outcome,
-            crit,
-            isAttackCard: true,
-            marked,
-          },
-        },
-      });
+      // Only mark when this is a real skill-based roll (not STAT×5, not weird custom).
+      const marked =
+        !usesStatX5 &&
+        baseTarget > 0 &&
+        (outcome === "failure" || crit === "critFailure");
 
-      // ---------------- WEAPON SFX ----------------
+      /* ----------------------------- SFX ------------------------------------ */
       try {
         let fireMode = null;
         if (mode === "auto") fireMode = "auto";
@@ -1319,7 +1417,7 @@ export class MailSystem {
         console.warn("Delta Green UI | WeaponSoundManager.play failed:", e);
       }
 
-      // ---------------- DAMAGE / LETHALITY LOGIC ----------------
+      /* ---------------------- DAMAGE / LETHALITY LOGIC ---------------------- */
       const dmgFormula =
         sys.damageFormula || sys.damage || sys.dmg || sys.formula || null;
 
@@ -1332,10 +1430,8 @@ export class MailSystem {
       const hpDamageFromLethalityRoll = (value) => {
         if (value <= 0) return 0;
         if (value >= 100) return 20;
-
         const tens = Math.floor(value / 10);
         const ones = value % 10;
-
         return tens + ones;
       };
 
@@ -1353,7 +1449,14 @@ export class MailSystem {
           const lethalityTotal = Number(lethalityRoll.total ?? 0);
 
           if (game.dice3d) {
-            await game.dice3d.showForRoll(lethalityRoll, game.user, true);
+            try {
+              await game.dice3d.showForRoll(lethalityRoll, game.user, true);
+            } catch (e) {
+              console.warn(
+                "Delta Green UI | Dice3D showForRoll (lethality) failed:",
+                e
+              );
+            }
           }
 
           if (lethalityTotal <= effectiveLethality) {
@@ -1383,18 +1486,18 @@ export class MailSystem {
           try {
             dmgRoll = new Roll(String(dmgFormula));
             await dmgRoll.evaluate();
-            await dmgRoll.toMessage({
-              speaker: ChatMessage.getSpeaker({ actor }),
-              flavor: `DAMAGE: ${String(dmgFormula)}`,
-            });
+
+            const baseDmg = Number(dmgRoll.total ?? 0) || 0;
+            const critDoubled = crit === "critSuccess";
+            const finalDmg = critDoubled ? baseDmg * 2 : baseDmg;
 
             dmgResultHtml = `
-              <div><b>DAMAGE:</b> ${dmgRoll.total} 
+              <div><b>DAMAGE:</b> ${finalDmg} 
                 <small>(${dmgRoll.formula}${
                   targetIsUnnatural && isLethalWeapon
                     ? "; Lethality ignored vs UNNATURAL target"
                     : ""
-                })</small>
+                }${critDoubled ? "; doubled for CRIT" : ""})</small>
               </div>
             `;
           } catch (e) {
@@ -1406,10 +1509,17 @@ export class MailSystem {
         }
       }
 
-      // ---------------- SUMMARY CARD ----------------
+      /* --------------------------- SUMMARY CARD ----------------------------- */
       let outcomeText = outcome.toUpperCase();
       if (crit === "critSuccess") outcomeText = "CRITICAL SUCCESS";
       else if (crit === "critFailure") outcomeText = "CRITICAL FAILURE";
+
+      const markLine =
+        marked && !usesStatX5
+          ? `<div class="dg-roll-marked">This skill is marked ☣</div>`
+          : "";
+
+      const attackFlavor = `ATTACK: ${(item.name || "WEAPON").toUpperCase()}`;
 
       const richContent = `
         <div class="dg-roll-result">
@@ -1417,7 +1527,7 @@ export class MailSystem {
           <div class="dg-roll-target">
             TARGET: ${target}% (BASE ${baseTarget}${
               mod ? (mod > 0 ? ` +${mod}` : ` ${mod}`) : ""
-            })
+            }${usesStatX5 ? " | STAT×5" : ""})
           </div>
           <div class="dg-roll-value ${
             crit === "critSuccess"
@@ -1440,6 +1550,7 @@ export class MailSystem {
               : ""
           }
           ${dmgResultHtml}
+          ${markLine}
         </div>
       `;
 
@@ -1451,8 +1562,9 @@ export class MailSystem {
         flags: {
           [DeltaGreenUI.ID]: {
             weaponSummary: true,
+            weaponAttack: true,
             itemId,
-            systemKey,
+            systemKey: systemKeyForFlags,
             baseTarget,
             modifier: mod,
             target,
@@ -1464,6 +1576,8 @@ export class MailSystem {
             targetIsUnnatural,
             lethalKill,
             lethalHpDamage,
+            usesStatX5,
+            marked,
           },
         },
       });
@@ -1569,67 +1683,70 @@ export class MailSystem {
         foundry.utils.getProperty(actor, bpPath)
       );
 
-      // ---------- 3. Dialog ----------
-      const sanDialog = await new Dialog({
-        title: `SAN Check for ${displayName}`,
-        content: `
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <label>SAN source type:
-              <select name="sanType">
-                <option value="other">Other / Unnatural / General</option>
-                <option value="violence">Violence</option>
-                <option value="helplessness">Helplessness</option>
-              </select>
-            </label>
-            <label>Loss on <b>SUCCESS</b> (e.g. 0, 1, 1d4):
-              <input type="text" name="success" value="0"/>
-            </label>
-            <label>Loss on <b>FAILURE</b> (e.g. 1, 1d6, 1d10):
-              <input type="text" name="failure" value="1d6"/>
-            </label>
-            <label>Modifier to <b>SAN target</b> (e.g. -20, 0, +20):
-              <input type="number" name="modifier" value="0"/>
-            </label>
-            <label>
-              <input type="checkbox" name="markAdaptation"/>
-              Count this as an adaptation incident (Violence/Helplessness)
-            </label>
-          </div>
-        `,
-        buttons: {
-          ok: {
-            label: "Roll SAN",
-            callback: (html) => {
-              const success =
-                (html.find('[name="success"]').val() || "0").trim();
-              const failure =
-                (html.find('[name="failure"]').val() || "1d6").trim();
-              const modifier =
-                parseInt(html.find('[name="modifier"]').val(), 10) || 0;
-              const sanType = (
-                html.find('[name="sanType"]').val() || "other"
-              ).trim();
-              const markAdaptation = html
-                .find('[name="markAdaptation"]')
-                .is(":checked");
+      // ---------- 3. Dialog (fixed: wrap Dialog in a Promise) ----------
+      const result = await new Promise((resolve) => {
+        new Dialog({
+          title: `SAN Check for ${displayName}`,
+          content: `
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <label>SAN source type:
+                <select name="sanType">
+                  <option value="other">Other / Unnatural / General</option>
+                  <option value="violence">Violence</option>
+                  <option value="helplessness">Helplessness</option>
+                </select>
+              </label>
+              <label>Loss on <b>SUCCESS</b> (e.g. 0, 1, 1d4):
+                <input type="text" name="success" value="0"/>
+              </label>
+              <label>Loss on <b>FAILURE</b> (e.g. 1, 1d6, 1d10):
+                <input type="text" name="failure" value="1d6"/>
+              </label>
+              <label>Modifier to <b>SAN target</b> (e.g. -20, 0, +20):
+                <input type="number" name="modifier" value="0"/>
+              </label>
+              <label>
+                <input type="checkbox" name="markAdaptation"/>
+                Count this as an adaptation incident (Violence/Helplessness)
+              </label>
+            </div>
+          `,
+          buttons: {
+            ok: {
+              label: "Roll SAN",
+              callback: (html) => {
+                const success =
+                  (html.find('[name="success"]').val() || "0").trim();
+                const failure =
+                  (html.find('[name="failure"]').val() || "1d6").trim();
+                const modifier =
+                  parseInt(html.find('[name="modifier"]').val(), 10) || 0;
+                const sanType = (
+                  html.find('[name="sanType"]').val() || "other"
+                ).trim();
+                const markAdaptation = html
+                  .find('[name="markAdaptation"]')
+                  .is(":checked");
 
-              return {
-                success,
-                failure,
-                modifier,
-                sanType,
-                markAdaptation,
-              };
+                resolve({
+                  success,
+                  failure,
+                  modifier,
+                  sanType,
+                  markAdaptation,
+                });
+              },
+            },
+            cancel: {
+              label: "Cancel",
+              callback: () => resolve(null),
             },
           },
-          cancel: { label: "Cancel" },
-        },
-        default: "ok",
-        close: (html) => html, // to satisfy eslint; we ignore
-      }).render(true);
+          default: "ok",
+        },  {classes: ["dg-ui-dialog"]}).render(true);
+      });
 
-      const result = await sanDialog;
-      if (!result || !result.success) return;
+      if (!result) return;
 
       const successFormula = result.success || "0";
       const failureFormula = result.failure || "1d6";
@@ -1959,7 +2076,8 @@ export class MailSystem {
     const dgFlags = msg.flags?.[DeltaGreenUI.ID] || {};
     const isTyped = !!dgFlags.typed;
     const isStat = !!dgFlags.statRoll;
-    const isSkill = !!dgFlags.skillRoll || isTyped;
+    const isSkillRoll = !!dgFlags.skillRoll || isTyped;
+    const isWeaponAttack = !!dgFlags.weaponAttack;
 
     let skillLabel = msg.flavor || "";
     let target =
@@ -1978,7 +2096,7 @@ export class MailSystem {
     let isFailure = false;
     let isSuccess = false;
 
-    if (isSkill || isStat) {
+    if (isSkillRoll || isStat || isWeaponAttack) {
       const outcome = dgFlags.outcome;
       const crit = dgFlags.crit;
       if (crit === "critSuccess") isCritSuccess = true;
@@ -2007,9 +2125,10 @@ export class MailSystem {
     else if (isFailure) valueClass += " dg-roll-failure";
     else if (isSuccess) valueClass += " dg-roll-success";
 
-    const markedLine = isMarked
-      ? `<div class="dg-roll-marked">This skill is marked ☣</div>`
-      : "";
+    const markedLine =
+      isMarked && (isSkillRoll || isStat || isWeaponAttack)
+        ? `<div class="dg-roll-marked">This skill is marked ☣</div>`
+        : "";
 
     let targetLine = "";
     if (target != null) {
@@ -2350,10 +2469,23 @@ export class MailSystem {
       const dgFlags = message.flags?.[DeltaGreenUI.ID];
       if (!dgFlags) return;
 
-      const { systemKey, marked, typed, skillRoll, weaponAttack } = dgFlags;
+      const {
+        systemKey,
+        marked,
+        typed,
+        skillRoll,
+        weaponAttack,
+        usesStatX5,
+      } = dgFlags;
+
+      // Must explicitly be marked and have a key
       if (!marked || !systemKey) return;
 
+      // Only care about actual skill rolls or weapon attacks
       if (!skillRoll && !weaponAttack) return;
+
+      // DO NOT mark for STAT-based weapon rolls (DEX×5, etc.)
+      if (weaponAttack && usesStatX5) return;
 
       const speaker = message.speaker || {};
       const actorId = speaker.actor;
@@ -2365,10 +2497,11 @@ export class MailSystem {
         ? `system.typedSkills.${systemKey}`
         : `system.skills.${systemKey}`;
 
-      const alreadyFailed = foundry.utils.getProperty(
-        actor,
-        `${basePath}.failure`
-      );
+      // If there's no real skill object here, bail (don't create ghost skills)
+      const skillData = foundry.utils.getProperty(actor, basePath);
+      if (!skillData || typeof skillData !== "object") return;
+
+      const alreadyFailed = skillData.failure;
       if (alreadyFailed) return;
 
       const updates = {};
@@ -2385,6 +2518,9 @@ export class MailSystem {
       if (!message) return;
 
       const dgFlags = message.flags?.[DeltaGreenUI.ID];
+
+      // Allow both skill rolls *and* weapon attacks to trigger marking;
+      // _markSkillOnActorFromFlags will filter out STAT×5 weapon rolls.
       if (
         dgFlags &&
         dgFlags.marked &&

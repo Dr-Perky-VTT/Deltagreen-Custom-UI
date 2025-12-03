@@ -425,14 +425,23 @@
     /* NEW: default scanline intensity (0–1), controlled by settings */
     --dg-scanline-opacity: 0.4;
 }
-/* Base CRT font for the whole page when DG CRT is “on” */
-body.dg-crt-on {
-    font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
-}
 /* Use the current CRT font (or Ac437 as fallback) in DG UI + popups */
-#dg-crt-container, #dg-crt-container *, #dg-journal-window, #dg-journal-window *, #dg-case-study-form, #dg-case-study-form *, #dg-vehicle-form, #dg-vehicle-form *, .dg-record-window, .dg-record-window * {
+#dg-crt-container, 
+#dg-crt-container *, 
+#dg-case-study-form, 
+#dg-case-study-form *,
+#dg-vehicle-form, 
+#dg-vehicle-form *, 
+.dg-record-window, .dg-record-window * {
     font-family: var(--dg-crt-font-family, "DG DG One"), monospace !important;
 }
+/* CRT-ish frame for the journal popup header + close button */
+#dg-journal-window,
+#dg-journal-window-header,
+#dg-journal-close {
+  font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+}
+
 /* ========================================================================== */
 /* CORE CRT LAYOUT – DOCKED TOP BAR + DROPDOWN */
 /* ========================================================================== */
@@ -641,7 +650,7 @@ body.dg-crt-on {
     color: var(--crt-text) !important;
 }
 
-}
+
 .dg-form-textarea {
     min-height: 100px;
     resize: vertical;
@@ -834,24 +843,6 @@ body.dg-crt-on {
     padding: 3px 6px;
     line-height: 1.1;
     text-align: center;
-}
-/* ========================================================================== */
-/* LOGIN BUTTON */
-/* ========================================================================== */
-#dg-login-button {
-    position: fixed;
-    top: 60px;
-    left: 100px;
-    z-index: 45;
-    background: var(--crt-text);
-    color: var(--crt-bg);
-    border: none;
-    padding: 3px 6px;
-    cursor: pointer;
-    font-size: 1em;
-    width: auto;
-    height: auto;
-    line-height: 1;
 }
 /* ========================================================================== */
 /* AGENT INFO / PLAYER LIST / WARNINGS */
@@ -1189,13 +1180,94 @@ body.dg-crt-on {
     max-height: calc(80vh - 70px);
 }
 .dg-journal-body img, .dg-journal-image-wrapper img, #dg-journal-window-body img, .dg-journal-main-thumb, .dg-journal-thumb {
-    width: 512px;
+    width: 768px;
     max-width: 100%;
     height: auto;
     display: block;
     margin: 8px auto;
     object-fit: contain;
 }
+/* ----------------------------------------------------------------------- */
+/* JOURNAL: PDF & VIDEO PAGE CARDS                                         */
+/* ----------------------------------------------------------------------- */
+
+.dg-journal-pdf-wrapper,
+.dg-journal-video-wrapper {
+  margin: 6px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--dg-color-border, var(--crt-border));
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 4px var(--crt-shadow, rgba(0, 0, 0, 0.8));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dg-color-text, var(--crt-text));
+}
+
+/* Top row: icon + name */
+.dg-journal-pdf-info,
+.dg-journal-video-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dg-journal-pdf-icon,
+.dg-journal-video-icon {
+  font-size: 12px;
+  opacity: 0.9;
+  color: var(--dg-color-accent, var(--crt-highlight));
+}
+
+/* File name text */
+.dg-journal-pdf-name,
+.dg-journal-video-name {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dg-color-text, var(--crt-text));
+}
+
+/* Optional debug/source line (URL or file path) */
+.dg-journal-pdf-src,
+.dg-journal-video-src {
+  font-size: 9px;
+  opacity: 0.7;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+/* Buttons: OPEN PDF / OPEN VIDEO */
+.dg-open-pdf,
+.dg-open-video {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 0;
+  border: 1px solid var(--dg-color-border, var(--crt-border));
+  background: transparent;
+  color: var(--dg-color-accent, var(--crt-highlight));
+  cursor: pointer;
+}
+
+.dg-open-pdf:hover,
+.dg-open-video:hover {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 4px var(--crt-highlight, var(--dg-color-accent));
+}
+
+/* Dim when the page accordion is collapsed */
+.dg-journal-page-header + .dg-journal-page-body:not(:visible)
+  .dg-journal-pdf-wrapper,
+.dg-journal-page-header + .dg-journal-page-body:not(:visible)
+  .dg-journal-video-wrapper {
+  opacity: 0.7;
+}
+
 /* ========================================================================== */
 /* HP/WP & SAN STATUS BOXES */
 /* ========================================================================== */
@@ -1230,50 +1302,115 @@ body.dg-crt-on {
     border-color: #f33;
     color: #f33;
 }
+
 /* ========================================================================== */
-/* DIALOG / WINDOW THEMING (GLOBAL) */
+/* DIALOG / WINDOW THEMING (GLOBAL)                                          */
 /* ========================================================================== */
+
+/* Base Foundry dialog chrome – dark CRT skin, BUT keep Foundry's own fonts */
 .app.window-app.dialog {
     background-color: var(--crt-bg) !important;
     border: 2px solid var(--crt-text) !important;
     color: var(--crt-text) !important;
-    font-family: var(--dg-crt-font-family, "DG One"), monospace !important;
 }
+
+/* Header bar */
 .app.window-app.dialog .window-header {
     background: var(--crt-bg) !important;
     border-bottom: 1px solid var(--crt-text) !important;
     color: var(--crt-text) !important;
 }
+
+/* Title text – tinted + uppercase, but no font override */
 .app.window-app.dialog .window-title {
     color: var(--crt-text) !important;
     text-transform: uppercase;
     font-size: 0.9em;
 }
+
+/* Main content + button row */
 .app.window-app.dialog .dialog-content {
     background-color: var(--crt-bg) !important;
     color: var(--crt-text) !important;
 }
+
 .app.window-app.dialog .dialog-buttons {
     background-color: var(--crt-bg) !important;
     border-top: 1px solid var(--crt-text) !important;
 }
+
+/* Buttons: CRT colors / hover, but keep whatever font Foundry uses */
 .app.window-app.dialog .dialog-buttons button {
     background-color: var(--crt-text) !important;
     color: var(--crt-bg) !important;
     border: 1px solid var(--crt-text) !important;
-    font-family: var(--dg-crt-font-family, "DG One"), monospace !important;
+    font-size: 0.75em;
+    padding: 3px 8px;
+    cursor: pointer; gap: 6px;
+}
+
+.app.window-app.dialog .dialog-buttons button:hover {
+    background-color: var(--crt-highlight) !important;
+    color: var(--crt-bg) !important;
+    border-color: var(--crt-highlight) !important;   padding: 3px 8px;
+}
+
+/* Even if Foundry tries to mark a dialog "light", keep it dark CRT */
+.app.window-app.dialog.themed.theme-light .window-content {
+    background: var(--crt-bg, #000) !important;
+    color: var(--crt-text, #00f8ff) !important;
+	
+}
+
+/* ========================================================================== */
+/* DG UI DIALOGS – CRT FONT ONLY FOR OUR WINDOWS                             */
+/* ========================================================================== */
+
+/* Any dialog you create in JS with classes: ["dg-ui-dialog", "..."] */
+.dg-ui-dialog .window-content {
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+    color: var(--crt-text) !important;
+	background: var(--crt-bg) !important;
+    text-transform: uppercase;
+    font-size: 0.9em;    padding: 3px 8px;
+}
+
+
+.dg-ui-dialog .window-header {    
+    font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	background: var(--crt-bg) !important;
+    border-bottom: 1px solid var(--crt-text) !important;
+    color: var(--crt-text) !important;
+}
+
+.dg-ui-dialog .window-title {    
+	font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	color: var(--crt-text) !important;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+.dg-ui-dialog .dialog-buttons button {
+    font-family: var(--dg-crt-font-family, "DG DG One"), monospace;
+	background-color: var(--crt-text) !important;
+    color: var(--crt-bg) !important;
+    border: 1px solid var(--crt-text) !important; gap: 6px;
     font-size: 0.75em;
     padding: 3px 8px;
     cursor: pointer;
 }
-.app.window-app.dialog .dialog-buttons button:hover {
-    background-color: var(--crt-highlight) !important;
+.dg-ui-dialog .window-content label,
+.dg-ui-dialog .window-content input,
+.dg-ui-dialog .window-content select,
+.dg-ui-dialog .window-content textarea,
+.dg-ui-dialog .window-content fieldset,
+.dg-ui-dialog .window-content legend {
+  color: var(--dg-crt-text) !important;
 }
 /* ========================================================================== */
 /* CUSTOM ROLL RESULT LOOK */
 /* ========================================================================== */
 .dg-roll-result {
-    border: 2px solid var(--dg-crt-primary);
+    border: 2px solid var(--crt-primary);
     background: linear-gradient(to bottom, #333, #111);
     padding: 8px 12px;
     margin: 6px 0;
@@ -2039,8 +2176,8 @@ body.dg-crt-on {
     height: 13px;
     cursor: pointer;
     margin: 0 2px;
-    color: dg-color-accent;
-    */
+    color: var(--dg-color-accent);
+    
 }
 /* Adapted tag (filled in by JS when adapted) */
 .dg-psyche-adapt-tag {
@@ -3213,4 +3350,9 @@ body.dg-crt-on {
   font-family: var(--dg-crt-font-family, monospace);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+/* Hide underlying file paths for PDF/VIDEO journal pages */
+.dg-journal-pdf-src,
+.dg-journal-video-src {
+  display: none !important;
 }

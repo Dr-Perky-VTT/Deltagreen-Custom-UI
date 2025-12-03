@@ -407,6 +407,8 @@ export class InventoryManager {
 
         rerender();
       }
+    }, {
+      classes: ["dg-ui-dialog", "dg-price-dialog", "dg-weapon-catalog-dialog"]
     });
 
     dlg.render(true);
@@ -660,6 +662,8 @@ export class InventoryManager {
 
         rerender();
       }
+    }, {
+      classes: ["dg-ui-dialog", "dg-price-dialog", "dg-gear-catalog-dialog"]
     });
 
     dlg.render(true);
@@ -904,7 +908,10 @@ export class InventoryManager {
         }
       },
       no: () => {},
-      defaultYes: false
+      defaultYes: false,
+      options: {
+        classes: ["dg-ui-dialog", "dg-confirm-dialog", "dg-inventory-confirm-dialog"]
+      }
     });
   }
 
@@ -929,6 +936,8 @@ export class InventoryManager {
         render: (html) => {
           this._wirePriceCatalogDialog(html, entries);
         }
+      }, {
+        classes: ["dg-ui-dialog", "dg-price-dialog", "dg-price-catalog-dialog"]
       });
 
       dlg.render(true);

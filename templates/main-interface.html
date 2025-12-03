@@ -21,6 +21,7 @@
       <div class="dg-menu-item" data-view="scene">SATELLITE</div>
       <div class="dg-menu-item" data-view="web" id="dg-web-button" style="display: none;">WEB</div>
       <div class="dg-menu-item" data-view="sound">SOUND</div>
+	  <div class="dg-menu-item" data-view="handler">HANDLER</div>
       <div class="dg-menu-item" data-view="settings" id="dg-settings-button">SETTINGS</div>
 	  
 
@@ -72,7 +73,7 @@
             <label for="dg-font-select" class="dg-form-label">
               CRT FONT
             </label>
-            <select id="dg-font-select" class="dg-form-input">
+            <select id="dg-font-select">
               <!-- Populated by JS -->
             </select>
           </div>
@@ -141,6 +142,35 @@
         </div>
         <!-- TIME view -->
         <div id="dg-view-time" class="dg-view"></div>
+<div id="dg-view-handler" class="dg-view">
+  <div class="dg-section">
+    <div class="dg-section-title">HANDLER DASHBOARD</div>
+
+    <table id="dg-handler-table" class="dg-table dg-handler-table">
+      <thead>
+        <tr>
+          <th>PLAYER</th>
+          <th>AGENT</th>
+          <th>STR</th>
+          <th>CON</th>
+          <th>DEX</th>
+          <th>INT</th>
+          <th>POW</th>
+          <th>CHA</th>
+          <th>HP</th>
+          <th>WP</th>
+          <th>SAN</th>
+          <th>BP</th>
+        </tr>
+      </thead>
+      <tbody id="dg-handler-table-body"></tbody>
+    </table>
+
+    <div id="dg-handler-empty" class="dg-placeholder" style="display:none;">
+      NO ACTIVE PLAYERS
+    </div>
+  </div>
+</div>
 
     
           </div>
